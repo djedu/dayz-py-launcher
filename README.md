@@ -18,7 +18,9 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 * Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf' (similar to the process used in DZGUI). If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
 
-* Download and browser DayZ Standalone Launcher's API server list (Click the 'Refresh All Servers' button).
+* Click the 'Refresh All Servers' button to download and browser DayZ Standalone Launcher's API server list.
+
+* Click the 'Refresh Selected' button to query the currently selected/highlighted server and pull the latest info (like Player count, Gametime, Ping, Mods)
 
 * Select server to view info and installed mods under the 'Server Info' tab. Doble click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
 
