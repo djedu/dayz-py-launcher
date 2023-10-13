@@ -24,6 +24,8 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 * Select server to view info and installed mods under the 'Server Info' tab. Doble click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
 
+* Set your DayZ 'Profile Name' under the Settings tab. If blank, you won't be able to join servers. 
+
 * If all mods are installed you should be able to use the 'Join Server' button on 'Server List' tab.
 
 * DayZ requires the vm.max_map_count to be increased or else it crashes upon loading. Upon Joining a server it will check if a user's vm.max_map_count is at least 1048576. If not, prompt for sudo password in order to execute the command to increase the vm.max_map_count.
