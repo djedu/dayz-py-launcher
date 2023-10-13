@@ -657,7 +657,7 @@ class App(ttk.Frame):
         # Widgets to display on Tab 2
         self.tab_2_widgets = [
             self.refresh_info_button,
-            self.load_workshop_label
+            self.load_workshop_label,
             self.refresh_info_label
         ]
         # Widgets to display on Tab 3
