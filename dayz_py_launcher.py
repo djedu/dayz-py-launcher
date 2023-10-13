@@ -286,7 +286,8 @@ class App(ttk.Frame):
             self.hide_tab_widgets(self.tab_2_widgets)
 
             self.refresh_info_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.refresh_info_label.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.load_workshop_label.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.refresh_info_label.grid(row=2, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
         elif selected_tab == 2:
             # If "Installed Mods" tab is selected
@@ -486,6 +487,14 @@ class App(ttk.Frame):
             self.widgets_frame, text='Refresh Info', style='Accent.TButton', command=refresh_server_mod_info
         )
 
+        # Load Mod in Steam Workshop Label
+        self.load_workshop_label = ttk.Label(
+            self.widgets_frame,
+            text='Double-click mods to open\nin Steam Workshop.\nSubscribe to download.',
+            justify='center',
+            anchor='n',
+        )
+
         # Refresh Info Label
         self.refresh_info_label = ttk.Label(
             self.widgets_frame,
@@ -628,7 +637,8 @@ class App(ttk.Frame):
             self.refresh_mod_button,
             self.refresh_info_button,
             self.total_label,
-            self.refresh_info_label
+            self.refresh_info_label,
+            self.load_workshop_label
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -647,6 +657,7 @@ class App(ttk.Frame):
         # Widgets to display on Tab 2
         self.tab_2_widgets = [
             self.refresh_info_button,
+            self.load_workshop_label
             self.refresh_info_label
         ]
         # Widgets to display on Tab 3
