@@ -42,6 +42,7 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 ## Not working / Known limitations
 
+* No App update checks. Needs to be manually updated from here/Gitlab.
 * Joining a server that is password protected
 * Flatpak may not work since it's untested.
 * Windows - Unable to join servers. The GUI stutters/hangs during loading and pinging servers after the 'Refresh All Servers'.
