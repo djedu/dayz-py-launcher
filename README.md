@@ -30,7 +30,7 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 * Once you join a server, it is added to your History. You can also click on a server and then hit the Checkbox 'Add/Remove Favorite'. If there's no blue check already, this will add to favorites. If it's checked, then it will remove it.
 
-* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't server hop frequently, then you shouldn't even need to download the entire list from DZSA.
+* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSA ('Refresh All Servers' button).
 
 * Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSA server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Refresh All Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
 
