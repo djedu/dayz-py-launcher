@@ -16,7 +16,7 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 ## Current Features / How to use
 
-* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf'. If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
+* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf' (similar to the process used in DZGUI). If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
 
 * Download and browser DayZ Standalone Launcher's API server list (Click the 'Refresh All Servers' button).
 
