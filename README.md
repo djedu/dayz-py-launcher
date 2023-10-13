@@ -2,9 +2,9 @@
 
 This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Would like to eventually make it work on Windows.
 
-This uses DayZ Standalone Launcher's (DZSA) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery module created by Yepoleb.
+This uses DayZ Standalone Launcher's (DZSA) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
 
-Theme used was created by rdbende (Azure-ttk-theme)
+Tkinter theme used was created by rdbende (Azure-ttk-theme)
 
 Have done no testing with Flatpak, only the normal Steam install. No auto-install for mods yet, but you can double-click on the missing mod under the 'Server Info' tab and it should load the Workshop in Steam for you to easily 'Subscribe'.
 
