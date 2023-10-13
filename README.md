@@ -16,7 +16,7 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 
 ## Current Features / How to use
 
-* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf'. If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. 
+* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf'. If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
 
 * Download and browser DayZ Standalone Launcher's API server list (Click the 'Refresh All Servers' button).
 
@@ -35,6 +35,18 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 * You can use the switch at the bottom right corner to toggle between light and dark mode. Or permanently set it under Settings.
 
 * Any additional launch parameters you'd like to use can be set under the Settings tab. See screenshot above.
+
+* Current default is to ping/query 20 servers at a time when loading the Server List. The lower you set it, the longer it will take to populate the Pings listed for each server. Turning it too high may cause you performance issues. If a server fails to repsond to a ping, it's ping will be listed at '999'.
+
+## Not working / Known limitations
+
+* Joining a server that is password protected
+* Flatpak may not work since it's untested.
+* Windows - Unable to join servers. The GUI stutters/hangs during loading and pinging servers after the 'Refresh All Servers'.
+
+## Known Bugs
+
+* For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory.
 
 ## Installation
 ### Manual
