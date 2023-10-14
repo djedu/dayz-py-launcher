@@ -6,7 +6,7 @@ This uses DayZ Standalone Launcher's (DZSA) API to download the servers. After t
 
 Tkinter theme used was created by rdbende (Azure-ttk-theme)
 
-Have done no testing with Flatpak, only the normal Steam install. No auto-install for mods yet, but you can double-click on the missing mod under the 'Server Info' tab and it should load the Workshop in Steam for you to easily 'Subscribe'.
+Have done no testing with Flatpak, only the normal Steam install on Manjaro. No auto-install for mods yet, but you can double-click on the missing mod under the 'Server Info' tab and it should load the Workshop in Steam for you to easily 'Subscribe'.
 
 ## Screenshots
 ![Server list/browser](screenshots/server_list.png)
