@@ -54,9 +54,20 @@ Have done no testing with Flatpak, only the normal Steam install. No auto-instal
 * For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory.
 
 ## Installation
+
+### Installer
+
+Run this installer script in your terminal...
+
+`curl -s "https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh" | bash`
+
+Once the script is complete, you should be able to run DayZ Py Launcher from you're 'Start Menu'
+
+Files are downloaded to $HOME/.local/share/dayz_py
+
 ### Manual
 
-Currently working on an installer script. Until then, download the compressed (zip, tar, etc) version from the top right. Extract. Open terminal and launch using...
+Download the compressed (zip, tar, etc) version from the top right. Extract. Open terminal and launch using...
 
 `python dayz_py_launcher.py`
 
