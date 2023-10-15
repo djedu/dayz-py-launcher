@@ -61,7 +61,7 @@ Run this installer script in your terminal...
 
 `curl -s "https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh" | bash`
 
-Once the script is complete, you should be able to run DayZ Py Launcher from you're 'Start Menu'
+Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
 Files are downloaded to $HOME/.local/share/dayz_py
 
