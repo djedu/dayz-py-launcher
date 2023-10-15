@@ -51,7 +51,7 @@ settings = {
     'max_servers_display': 0, # 0 = No Limit
     'max_sim_pings': 20,
     'load_favs_on_startup': True,
-    'check_updates': False,
+    'check_updates': True,
     'favorites': {},
     'history': {}
 }
