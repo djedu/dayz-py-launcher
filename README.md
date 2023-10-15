@@ -73,7 +73,7 @@ Download the compressed (zip, tar, etc) version from the top right. Extract. Ope
 
 ### Upgrades
 
-Still working on implemting this into the launcher on startup. The setting is already there to Enable or Disable (Disabled by default), but the rest is incomplete. Until then, running the above install script or manually overwriting the dayz_py_launcher.py file will work.
+Still working on implemting this into the launcher on startup. The setting is already there to Enable or Disable (Enabled by default), but the rest is incomplete. Until then, running the above install script or manually overwriting the dayz_py_launcher.py file will work.
 
 ## Special Thanks
 
