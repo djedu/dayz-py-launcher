@@ -446,13 +446,13 @@ class App(ttk.Frame):
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
         self.show_favorites = ttk.Checkbutton(
-            self.widgets_frame, text='Only Show Favorites', variable=self.show_favorites_var, command=filter_treeview
+            self.widgets_frame, text='Only Show Favorites', variable=self.show_favorites_var, command=lambda: filter_treeview(self.show_favorites_var.get())
         )
 
         # Show Only History Filter Checkbutton
         self.show_history_var = tk.BooleanVar()
         self.show_history = ttk.Checkbutton(
-            self.widgets_frame, text='Only Show History', variable=self.show_history_var, command=filter_treeview
+            self.widgets_frame, text='Only Show History', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
         )
 
         # Clear Filters button
@@ -941,7 +941,7 @@ def server_pings(id, server_info):
     app.treeview.item(id, text='', values=server_info + (ping,))
 
 
-def filter_treeview():
+def filter_treeview(chkbox_not_toggled: bool=True):
     global hidden_items
 
     # Gets values from Entry box
@@ -954,8 +954,10 @@ def filter_treeview():
 
     # Reset previous filters. If turned on, treeview is reset after every
     # filter update. Without it, you can 'stack' filters and search within
-    # the current filtered view.
-    if app.keypress_filter_var.get():
+    # the current filtered view. If chkbox_not_toggled is false, which occurs
+    # whenever a 'Show Only" checkbox is toggled from On to Off, then we need
+    # to restore the entries that were previously hidden.
+    if app.keypress_filter_var.get() or not chkbox_not_toggled:
         restore_treeview()
 
     # Checks if entry and combobox values exist and are not the
