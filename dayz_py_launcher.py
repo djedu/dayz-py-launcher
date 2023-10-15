@@ -26,8 +26,8 @@ MOD_DB = {}
 
 hidden_items = set()
 
-appName = 'DayZ Py Launcher/0.5'
-# game = 'dayz'
+appName = 'DayZ Py Launcher'
+version = '1.0.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v2/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -37,7 +37,7 @@ settings_json = 'dayz_py.json'
 
 # Header used in DZSA API request
 headers = {
-    'User-Agent': f'({appName}'
+    'User-Agent': f'({appName}/{version}'
 }
 
 # Default settings
@@ -297,9 +297,12 @@ class App(ttk.Frame):
             self.refresh_mod_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
             self.total_label.grid(row=1, column=0, padx=5, pady=10, sticky='nsew')
 
-        else:
-            for grid_item in self.grid_list:
-                grid_item.grid_forget()
+        elif selected_tab == 3:
+            # If "Settings" tab is selected
+            # Hide widgets from all tabs except tab_4
+            self.hide_tab_widgets(self.tab_4_widgets)
+
+            self.version_label.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
     def hide_tab_widgets(self, tab_list):
         """
@@ -596,6 +599,14 @@ class App(ttk.Frame):
             anchor='n'
         )
 
+        # Version Label
+        self.version_label = ttk.Label(
+            self.widgets_frame,
+            text=f'Version {version}',
+            justify='center',
+            anchor='n'
+        )
+
         # # Tab #4 (Settings)
         self.tab_4 = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_4, text='Settings')
@@ -638,7 +649,8 @@ class App(ttk.Frame):
             self.refresh_info_button,
             self.total_label,
             self.refresh_info_label,
-            self.load_workshop_label
+            self.load_workshop_label,
+            self.version_label
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -664,6 +676,11 @@ class App(ttk.Frame):
         self.tab_3_widgets = [
             self.refresh_mod_button,
             self.total_label
+        ]
+
+        # Widgets to display on Tab 4
+        self.tab_4_widgets = [
+            self.version_label
         ]
 
 
