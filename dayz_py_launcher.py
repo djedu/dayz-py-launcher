@@ -2279,6 +2279,6 @@ if __name__ == '__main__':
     # Check for Updates. Delay it until after GUI is up to force popup
     # to center of the app.
     if settings.get('check_updates') and linux_os:
-        app.after(5000, app_updater)
+        app.after(3000, app_updater)
 
     root.mainloop()
