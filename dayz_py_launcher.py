@@ -21,11 +21,6 @@ from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 from vdf2json import vdf2json
 
 
-SERVER_DB = {}
-MOD_DB = {}
-
-hidden_items = set()
-
 appName = 'DayZ Py Launcher'
 version = '1.0.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v2/launcher/servers/dayz'
@@ -34,6 +29,10 @@ steam_cmd = 'steam'
 app_id = '221100'
 # home_dir = os.path.expanduser('~')
 settings_json = 'dayz_py.json'
+
+# Used for checking/downloading updates
+main_branch_py = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_launcher.py'
+main_branch_sh = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh'
 
 # Header used in DZSA API request
 headers = {
@@ -55,6 +54,11 @@ settings = {
     'favorites': {},
     'history': {}
 }
+
+SERVER_DB = {}
+MOD_DB = {}
+
+hidden_items = set()
 
 
 class App(ttk.Frame):
@@ -2136,6 +2140,89 @@ def check_platform():
         windows_os = True
 
 
+def get_latest_release(url):
+    """
+    Used to download files from GitLab to be used for checking the latest version
+    or downloading the latest install/upgrade script.
+    """
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        error_message = f'Error downloading URL: {url}\n\n{response.reason}'
+        print(error_message)
+        app.MessageBoxError(error_message)
+        return None
+
+
+def extract_version(text):
+    """
+    Get the version from the latest py file by using split to grab contents
+    after "version = '". Then get the contents before the ' and newline
+    """
+    return text.split("version = '")[1].split("'\n")[0]
+
+
+def compare_versions(version, latest_version):
+    return version != latest_version
+
+
+def update_check():
+    """
+    Check for latest updates directly from the dayz_py_launcher.py on GitLab
+    """
+    # Download the raw dayz_py_launcher.py
+    py_raw = get_latest_release(main_branch_py)
+
+    # Get version from download
+    latest_version = extract_version(py_raw)
+
+    # Check if local version differs from GitLab version.
+    return compare_versions(version, latest_version)
+
+
+def install_update():
+    """
+    Download the latest installer script, add executable permission and run
+    """
+    script = 'dayz_py_installer.sh'
+    # Download the script
+    install_script = get_latest_release(main_branch_sh)
+    if install_script:
+        with open(script, 'w') as script_file:
+            script_file.write(install_script)
+    else:
+        error_message = 'Failed to download the script.'
+        print(error_message)
+        app.MessageBoxError(error_message)
+        return
+
+    # Make the script executable
+    os.chmod(script, 0o755)
+
+    # Run script
+    try:
+        subprocess.run(['./' + script], check=True)
+    except subprocess.CalledProcessError as e:
+        error_message = f'Failed to run the Upgrade Script.\n\n{e}'
+        print(error_message)
+        app.MessageBoxError(error_message)
+
+
+def app_updater():
+    """
+    Function to combine update check, download and install if user chooses to accept
+    """
+    updated = update_check()
+
+    if updated:
+        ask_message = 'Update Available. Would you like to install it now?'
+        answer = app.MessageBoxAskYN(message=ask_message)
+        print('Update App:', answer)
+        if answer:
+            install_update()
+
+
 if __name__ == '__main__':
 
     # Check user's platform
@@ -2186,5 +2273,10 @@ if __name__ == '__main__':
     # Load Favorites and History on Startup unless disabled by user
     if settings.get('load_favs_on_startup'):
         app.after(500, load_fav_history)
+
+    # Check for Updates. Delay it until after GUI is up to force popup
+    # to center of the app.
+    if settings.get('check_updates') and linux_os:
+        app.after(2000, app_updater)
 
     root.mainloop()
