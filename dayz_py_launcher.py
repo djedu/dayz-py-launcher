@@ -2208,6 +2208,9 @@ def install_update():
         print(error_message)
         app.MessageBoxError(error_message)
 
+    info_message = 'Install complete. Restart the Launcher to apply changes.'
+    app.MessageBoxInfo(message=info_message)
+
 
 def app_updater():
     """
@@ -2277,6 +2280,6 @@ if __name__ == '__main__':
     # Check for Updates. Delay it until after GUI is up to force popup
     # to center of the app.
     if settings.get('check_updates') and linux_os:
-        app.after(2000, app_updater)
+        app.after(5000, app_updater)
 
     root.mainloop()
