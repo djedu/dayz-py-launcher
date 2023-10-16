@@ -73,7 +73,9 @@ Download the compressed (zip, tar, etc) version from the top right. Extract. Ope
 
 ### Upgrades
 
-Still working on implemting this into the launcher on startup. The setting is already there to Enable or Disable (Enabled by default), but the rest is incomplete. Until then, running the above install script or manually overwriting the dayz_py_launcher.py file will work.
+If an update is available, you should be prompted shortly after the app starts. If you choose to update, restart the app once completed. Can disable update checks under the Settings tab.
+
+You can also run the same script in the Installer section above.
 
 ## Special Thanks
 
