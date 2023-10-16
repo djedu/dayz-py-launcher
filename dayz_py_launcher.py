@@ -603,6 +603,12 @@ class App(ttk.Frame):
             anchor='n'
         )
 
+        # # Tab #4 (Settings)
+        self.tab_4 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_4, text='Settings')
+
+        SettingsMenu(self.tab_4)
+
         # Version Label
         self.version_label = ttk.Label(
             self.widgets_frame,
@@ -610,12 +616,6 @@ class App(ttk.Frame):
             justify='center',
             anchor='n'
         )
-
-        # # Tab #4 (Settings)
-        self.tab_4 = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_4, text='Settings')
-
-        SettingsMenu(self.tab_4)
 
         # Switch (Toggle Dark/Light Mode)
         self.switch = ttk.Checkbutton(
