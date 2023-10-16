@@ -2203,13 +2203,12 @@ def install_update():
     # Run script
     try:
         subprocess.run(['./' + script], check=True)
+        info_message = 'Install complete. Restart the Launcher to apply changes.'
+        app.MessageBoxInfo(message=info_message)
     except subprocess.CalledProcessError as e:
         error_message = f'Failed to run the Upgrade Script.\n\n{e}'
         print(error_message)
         app.MessageBoxError(error_message)
-
-    info_message = 'Install complete. Restart the Launcher to apply changes.'
-    app.MessageBoxInfo(message=info_message)
 
 
 def app_updater():
