@@ -22,7 +22,7 @@ from vdf2json import vdf2json
 
 
 appName = 'DayZ Py Launcher'
-version = '1.0.0'
+version = '1.1.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
