@@ -1312,7 +1312,8 @@ def format_server_list_dzsa(servers):
     list which will then be used to create the Treeview.
     """
     # print(servers)
-    treeview_list = []
+    # Use set to catch/handle duplicate server listing in DZSA API
+    treeview_list = set()
     server_count = len(servers)
     for server in servers:
         map_name = server.get('map').title()
@@ -1332,7 +1333,7 @@ def format_server_list_dzsa(servers):
         else:
             treeview_list = server_info
 
-    return treeview_list
+    return list(treeview_list)
 
 
 def get_installed_mod_ids(directory):
