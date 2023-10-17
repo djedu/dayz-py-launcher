@@ -9,7 +9,7 @@ tarDownload="https://gitlab.com/tenpenny/dayz-py-launcher/-/archive/main/dayz-py
 # Create the required directories
 mkdir -p "$share"
 
-# Download the dzgui.sh script and save it to the desired location
+# Download the app and save it to the desired location. Extract.
 curl -L $tarDownload | tar zxf - --strip-components=1 -C "$share"
 
 # Write the content to the desktopFile
