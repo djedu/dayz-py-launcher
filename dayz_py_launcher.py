@@ -1334,7 +1334,7 @@ def format_server_list_dzsa(servers):
         else:
             treeview_list = server_info
 
-    return list(treeview_list)
+    return treeview_list
 
 
 def get_installed_mod_ids(directory):
