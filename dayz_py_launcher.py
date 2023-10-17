@@ -249,8 +249,9 @@ class App(ttk.Frame):
         # Unselect previously clicked treeview item & Checkboxes
         self.treeview.selection_set([])
         self.show_favorites_var.set(value=False)
-        self.favorite_var.set(value=False)
         self.show_history_var.set(value=False)
+        self.show_sponsored_var.set(value=False)
+        self.favorite_var.set(value=False)
 
     def combobox_focus_out(self):
         """
@@ -276,10 +277,11 @@ class App(ttk.Frame):
             self.map_combobox.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
             self.show_favorites.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
             self.show_history.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
-            self.clear_filter.grid(row=7, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=8, column=0, padx=(20, 20), pady=10, sticky='ew')
-            self.join_server_button.grid(row=9, column=0, padx=5, pady=5, sticky='nsew')
-            self.favorite.grid(row=10, column=0, padx=5, pady=10, sticky='ew')
+            self.show_sponsored.grid(row=7, column=0, padx=5, pady=5, sticky='ew')
+            self.clear_filter.grid(row=8, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=9, column=0, padx=(20, 20), pady=10, sticky='ew')
+            self.join_server_button.grid(row=10, column=0, padx=5, pady=5, sticky='nsew')
+            self.favorite.grid(row=11, column=0, padx=5, pady=10, sticky='ew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -460,6 +462,12 @@ class App(ttk.Frame):
         self.show_history_var = tk.BooleanVar()
         self.show_history = ttk.Checkbutton(
             self.widgets_frame, text='Only Show History', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
+        )
+
+        # Show Only Sponsored Filter Checkbutton
+        self.show_sponsored_var = tk.BooleanVar()
+        self.show_sponsored = ttk.Checkbutton(
+            self.widgets_frame, text='Only Show Sponsored', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
         )
 
         # Clear Filters button
@@ -646,6 +654,7 @@ class App(ttk.Frame):
             self.show_favorites,
             self.show_history,
             self.favorite,
+            self.show_sponsored,
             self.entry,
             self.map_combobox,
             self.separator,
@@ -665,6 +674,7 @@ class App(ttk.Frame):
             self.map_combobox,
             self.show_favorites,
             self.show_history,
+            self.show_sponsored,
             self.clear_filter,
             self.separator,
             self.join_server_button,
@@ -995,10 +1005,12 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     show_favorites = app.show_favorites_var.get()
     # Gets values from Only Show History checkbox
     show_history = app.show_history_var.get()
+    # Gets values from Only Show Sponsored checkbox
+    show_sponsored = app.show_sponsored_var.get()
 
     # Check if ANY of the bools above are true. Then hides/detaches Treeview items
     # that do not match. Stores hidden items in the global 'hidden_items' list.
-    bool_filter_list = [text_entered, map_selected, show_favorites, show_history]
+    bool_filter_list = [text_entered, map_selected, show_favorites, show_history, show_sponsored]
     if any(bool_filter_list):
         for item_id in app.treeview.get_children():
             server_values = app.treeview.item(item_id, 'values')
@@ -1022,6 +1034,9 @@ def filter_treeview(chkbox_not_toggled: bool=True):
                 hide_treeview_item(item_id)
 
             if show_history and not settings.get('history').get(f'{ip}:{qport}'):
+                hide_treeview_item(item_id)
+
+            if show_sponsored and not SERVER_DB[f'{ip}:{qport}'].get('sponsor'):
                 hide_treeview_item(item_id)
 
 
