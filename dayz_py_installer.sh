@@ -11,9 +11,9 @@ mkdir -p "$share"
 
 # Download the dzgui.sh script and save it to the desired location
 curl -L $tarDownload | tar zxf - --strip-components=1 -C "$share"
-chmod +x "$dayz_py_file"
 
 # Write the content to the desktopFile
+[[ -f $desktopFile ]] && rm $desktopFile
 cat <<-END > "$desktopFile"
 [Desktop Entry]
 Version=1.0
