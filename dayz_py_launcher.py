@@ -1329,7 +1329,7 @@ def format_server_list_dzsa(servers):
         server_info = (map_name, name, players, max_players, time, ip_port, qport)
 
         if server_count > 1:
-            treeview_list.append(server_info)
+            treeview_list.add(server_info)
         else:
             treeview_list = server_info
 
