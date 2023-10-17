@@ -558,6 +558,7 @@ class App(ttk.Frame):
             self.tab_2,
             textvariable=self.server_info_text,
             justify='center',
+            wraplength=925,
         )
         self.label.grid(row=1, column=0, padx=(75, 0), sticky='nsew')
 
