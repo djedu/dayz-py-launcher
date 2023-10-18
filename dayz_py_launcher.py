@@ -1314,7 +1314,7 @@ def format_server_list_dzsa(servers):
     """
     # print(servers)
     # Use set to catch/handle duplicate server listing in DZSA API
-    treeview_list = set()
+    treeview_list = []
     server_count = len(servers)
     for server in servers:
         map_name = server.get('map').title()
@@ -1330,7 +1330,8 @@ def format_server_list_dzsa(servers):
         server_info = (map_name, name, players, max_players, time, ip_port, qport)
 
         if server_count > 1:
-            treeview_list.add(server_info)
+            if server_info not in treeview_list:
+                treeview_list.append(server_info)
         else:
             treeview_list = server_info
 
