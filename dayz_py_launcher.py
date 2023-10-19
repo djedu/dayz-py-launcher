@@ -1652,13 +1652,6 @@ def launch_game():
     app.add_history(ip, qport)
 
 
-def seconds_to_milliseconds(seconds):
-    """
-    Convert seconds to milliseconds. Used for the a2s ping.
-    """
-    return round(seconds * 1000)
-
-
 def check_steam_process():
     """
     Check if Steam is running
@@ -1788,7 +1781,8 @@ def a2s_query(ip, qport, update: bool=True):
             SERVER_DB[f'{ip}:{qport}']['name'] = info.server_name
             SERVER_DB[f'{ip}:{qport}']['mods'] = []
 
-        ping = seconds_to_milliseconds(info.ping)
+        # Convert ping from seconds to milliseconds
+        ping = round(info.ping * 1000)
 
     except TimeoutError:
         # message = f'Timed out getting info/ping from Server {ip} using Qport {qport}'
