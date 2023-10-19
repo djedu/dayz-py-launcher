@@ -1168,8 +1168,8 @@ def refresh_servers():
 
     for i, tuple in enumerate(treeview_list):
         app.treeview.insert('', tk.END, values=tuple)
-
-        if MAX_TREEVIEW_LENGTH and i == MAX_TREEVIEW_LENGTH:
+        # Subtract 1 from MAX_TREEVIEW_LENGTH to account for Python starting count at 0
+        if MAX_TREEVIEW_LENGTH and i == MAX_TREEVIEW_LENGTH - 1:
             break
 
     # Enable buttons now that Treeview is Populated
