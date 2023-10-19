@@ -1747,6 +1747,10 @@ def a2s_query(ip, qport, update: bool=True):
     IP and Query Port (separte from the game port). Update the SERVER_DB with
     latest info and get the ping response time.
 
+    If this is an 'update' to an existing SERVER_DB entry, then only update the
+    dict else, create the entry (like when loading favorites and history from
+    user's settings/config)
+
     Source: https://github.com/Yepoleb/python-a2s
     """
     try:
