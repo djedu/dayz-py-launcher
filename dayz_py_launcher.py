@@ -1960,13 +1960,25 @@ def load_fav_history():
     # Merge favorites and history into one dict.
     fav_history = settings.get('favorites') | settings.get('history')
 
-    for server, values in fav_history.items():
+    # Make the querying of each server multithreaded
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        # Create a list to store the futures
+        futures = []
+        for server, values in fav_history.items():
+            ip, qport = server.split(':')
+
+            # Submit the a2s_query function to the thread pool and store the future
+            # Specify 'False' for the update argument in order to trigger an insert
+            # into the SERVER_DB instead of an update. Also, creates necessary keys
+            # in the SERVER_DB for future query updates
+            future = executor.submit(a2s_query, ip, qport, False)
+            futures.append((future, server, values))
+
+    # Wait for all futures to complete
+    for future, server, values in futures:
         ip, qport = server.split(':')
         stored_name = values.get('name')
-        # Specify 'False' for the update argument in order to trigger an
-        # insert into the SERVER_DB instead of an update. Also, creates
-        # necessary keys in the SERVER_DB for future query updates
-        ping, info = a2s_query(ip, qport, False)
+        ping, info = future.result()
         if info:
             a2s_mods(ip, qport)
             server_map = info.map_name.title()
@@ -1976,7 +1988,7 @@ def load_fav_history():
             gamePort = info.port
             time = info.keywords[-5:]
 
-            treeview_values = [server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', qport, ping]
+            treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', qport, ping)
             app.treeview.insert('', tk.END, values=treeview_values)
 
             # Generate Map list for Filter Combobox
@@ -1985,7 +1997,7 @@ def load_fav_history():
 
         else:
             # If the server is down or unreachable, just insert info stored in favorites/history
-            treeview_values = ['Server Down', stored_name, '', '', '', f'{ip}:{""}', qport, '']
+            treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', qport, '')
             app.treeview.insert('', tk.END, values=treeview_values)
             SERVER_DB[f'{ip}:{qport}'] = {'name': stored_name, 'mods': []}
 
