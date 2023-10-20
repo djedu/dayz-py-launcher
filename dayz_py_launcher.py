@@ -2182,18 +2182,6 @@ def get_latest_release(url):
         return None
 
 
-def extract_version(text):
-    """
-    Get the version from the latest py file by using split to grab contents
-    after "version = '". Then get the contents before the ' and newline
-    """
-    return text.split("version = '")[1].split("'\n")[0]
-
-
-def compare_versions(version, latest_version):
-    return version != latest_version
-
-
 def update_check():
     """
     Check for latest updates directly from the dayz_py_launcher.py on GitLab
@@ -2202,10 +2190,10 @@ def update_check():
     py_raw = get_latest_release(main_branch_py)
 
     # Get version from download
-    latest_version = extract_version(py_raw)
-
+    latest_version = py_raw.split("version = '")[1].split("'\n")[0]
+    
     # Check if local version differs from GitLab version.
-    return compare_versions(version, latest_version)
+    return version != latest_version
 
 
 def install_update():
