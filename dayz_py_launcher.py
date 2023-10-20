@@ -1002,6 +1002,10 @@ def filter_treeview(chkbox_not_toggled: bool=True):
 
     # Clear Server Info tab
     app.server_info_text.set('')
+    app.server_mods_tv.delete(*app.server_mods_tv.get_children())
+
+    # Unselect previously clicked treeview item
+    app.treeview.selection_set([])
 
     # Reset previous filters. If turned on, treeview is reset after every
     # filter update. Without it, you can 'stack' filters and search within
