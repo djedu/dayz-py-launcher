@@ -23,7 +23,7 @@ from vdf2json import vdf2json
 
 
 logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
-                    format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+                    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
