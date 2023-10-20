@@ -22,7 +22,7 @@ from vdf2json import vdf2json
 
 
 appName = 'DayZ Py Launcher'
-version = '1.1.3'
+version = '1.1.4'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -2306,6 +2306,6 @@ if __name__ == '__main__':
     # Check for Updates. Delay it until after GUI is up to force popup
     # to center of the app.
     if settings.get('check_updates') and linux_os:
-        app.after(3000, app_updater)
+        app.after(3000, lambda: Thread(target=app_updater, daemon=True).start())
 
     root.mainloop()
