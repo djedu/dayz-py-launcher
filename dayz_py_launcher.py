@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.1.5'
+version = '1.1.6'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -2220,8 +2220,13 @@ def get_latest_release(url):
     Used to download files from GitLab to be used for checking the latest version
     or downloading the latest install/upgrade script.
     """
-     try:
-        response = requests.get(url)
+    try:
+        session = requests.Session()
+        retry = Retry(connect=5, backoff_factor=1.0)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('https://', adapter)
+
+        response = session.get(url, headers=headers)
         response.raise_for_status()
         return response.text
     except requests.exceptions.RequestException as err:
