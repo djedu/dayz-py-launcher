@@ -220,7 +220,7 @@ class App(ttk.Frame):
             'name': SERVER_DB.get(f'{ip}:{qport}').get('name'),
             'last_joined': str(datetime.now().astimezone())
         }
-        logInfo = f'{server_db_info.get("name")} - {ip}:{qport}'
+        logInfo = f'{SERVER_DB.get(f"{ip}:{qport}").get("name")} - {ip}:{qport}'
         logMessage = f'{logInfo} - Added to History'
         save_settings_to_json()
 
@@ -1508,10 +1508,9 @@ def compare_modlist(server_mods, installed_mods):
     for id, name in server_mods.items():
         # print(id, name)
         if str(id) not in installed_mods:
-            message = f'Missing Mod: {name}'
-            print(message)
-            # info(message)
-            # warn(message)
+            debug_message = f'Missing Mod: {name}'
+            print(debug_message)
+            logging.debug(debug_message)
             missing_mods = True
 
     return missing_mods
@@ -1562,29 +1561,39 @@ def launch_game():
     # the default blank in order to force the user to set one.
     if not settings.get('profile_name'):
         error_message = 'No Profile Name is currently set.\nCheck the Settings tab, then try again.'
+        logging.error(error_message)
         app.MessageBoxError(message=error_message)
         return
 
     steam_running = check_steam_process()
-    print('Steam Running:', steam_running)
+    debug_message = f'Steam Running: {steam_running}'
+    logging.debug(debug_message)
+    print(debug_message)
     if not steam_running:
         ask_message = "Steam isn't running.\nStart it?"
         answer = app.MessageBoxAskYN(message=ask_message)
-        print('Start Steam:', answer)
+        debug_message = f'Start Steam: {answer}'
+        logging.debug(debug_message)
+        print(debug_message)
         if not answer:
             error_message = 'Steam is required for DayZ.\nCancelling "Join Server"'
+            logging.error(error_message)
             app.MessageBoxError(message=error_message)
             return
 
     dayz_running = check_dayz_process()
-    print('DayZ Running:', dayz_running)
+    debug_message = f'DayZ Running: {dayz_running}'
+    logging.debug(debug_message)
+    print(debug_message)
     if dayz_running:
         warn_message = 'DayZ is already running.\nClose the game and try again'
+        logging.warning(warn_message)
         app.MessageBoxWarn(message=warn_message)
         return
 
     if linux_os and not check_max_map_count():
         error_message = 'Unable to update max_map_count.\nCancelling "Join Server"'
+        logging.error(error_message)
         app.MessageBoxError(message=error_message)
         return
 
@@ -1605,13 +1614,15 @@ def launch_game():
     if server_mods:
         missing_mods = compare_modlist(server_mods, installed_mods)
     else:
-        message = f'Failed getting mods directly from server ({ip}, {qport}. Using existing SERVER_DB mod list.)'
-        print(message)
+        warn_message = f'Failed getting mods directly from server ({ip}, {qport}. Using existing SERVER_DB mod list.)'
+        logging.warning(warn_message)
+        print(warn_message)
         missing_mods = compare_modlist(get_serverdb_mods(ip, qport), installed_mods)
 
     # Alert user that mods are missing
     if missing_mods:
         error_message = 'Unable to join server. Check the "Server Info" tab for missing mods'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(message=error_message)
         return
@@ -1630,11 +1641,13 @@ def launch_game():
     ]
 
     launch_cmd = default_params
+    logging.debug(f'Initial launch_cmd: {launch_cmd}')
 
     # Append Additional parameters input by the user to launch command.
     if settings.get('launch_params'):
         print('Setting additional parameters.')
         steam_custom_params = settings.get('launch_params').strip().split(' ')
+        logging.debug(f'Additional launch params: {steam_custom_params}')
         launch_cmd = launch_cmd + steam_custom_params
 
     # Generate mod parameter list and append to launch command
@@ -1642,18 +1655,25 @@ def launch_game():
         print('Setting mod parameter list.')
         mod_params = generate_mod_param_list(server_mods)
         # Append mod param to launch command
+        logging.debug(f'Server mods params: {mod_params}')
         launch_cmd = launch_cmd + mod_params
 
     # launch_cmd = default_params + steam_custom_params + [mod_params]
-    print(f'{launch_cmd=}')
+    debug_message = f'{launch_cmd=}'
+    logging.debug(debug_message)
+    print(debug_message)
+
     str_command = " ".join(launch_cmd)
-    print(f'Using launch command: {str_command}')
+    debug_message = f'Using launch command: {str_command}'
+    logging.debug(debug_message)
+    print(debug_message)
 
     try:
         subprocess.Popen(launch_cmd)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        print(e)
         error_message = f'Failed to launch DayZ.\n\n{e}'
+        logging.error(error_message)
+        print(error_message)
         app.MessageBoxError(error_message)
 
     # Add server to user's History'
