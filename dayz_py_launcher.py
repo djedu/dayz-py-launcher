@@ -22,7 +22,7 @@ from vdf2json import vdf2json
 
 
 appName = 'DayZ Py Launcher'
-version = '1.1.4'
+version = '1.1.5'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -1337,18 +1337,6 @@ def format_server_list_dzsa(servers):
     return treeview_list
 
 
-def get_installed_mod_ids(directory):
-    """
-    Loops through all the folders in the Steam Workshop directory to
-    return a list of all the folder names which is also the Steam
-    Workshop ID.
-    """
-    installed_mods = sorted([f.name for f in os.scandir(directory) if f.is_dir()])
-    # print(installed_mods)
-
-    return installed_mods
-
-
 def get_mod_name(file):
     """
     Opens the file passed, in this case the Steam Mod meta.cpp file, which
@@ -1587,8 +1575,8 @@ def launch_game():
 
     workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
     # Get list of installed mod ID from the Steam Workshop directory
-    installed_mods = get_installed_mod_ids(workshop_dir)
-    # print(installed_mods)
+    installed_mods = sorted([f.name for f in os.scandir(workshop_dir) if f.is_dir()])
+
     # Query the server directly for current mods.
     server_mods = a2s_mods(ip, qport)
 
