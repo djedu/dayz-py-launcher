@@ -1290,7 +1290,7 @@ def remove_broken_symlinks(symlink_dir):
         for entry in entries:
             # print(entry)
             if entry.name.startswith('@') and entry.is_symlink() and not entry.is_dir():
-                # print(f'Removing broken symlink: {entry.name}')
+                logging.debug(f'Removing broken symlink: {entry.name}')
                 os.unlink(entry.path)
 
 
@@ -1321,7 +1321,7 @@ def create_symlinks(workshop_dir, symlink_dir):
         symlink = os.path.join(symlink_dir, f'@{encode(id)}')
 
         if not os.path.islink(symlink) and not os.path.exists(symlink):
-            # print(f'Creating Symlink for: {name}')
+            logging.debug(f'Creating Symlink for: {name} - {symlink}')
             os.symlink(mod_path, symlink)
         # else:
             # print(f'Mod Already Symlinked: {name}')
@@ -2199,11 +2199,12 @@ def update_check():
     # Download the raw dayz_py_launcher.py
     py_raw = get_latest_release(main_branch_py)
 
-    # Get version from download
-    latest_version = py_raw.split("version = '")[1].split("'\n")[0]
-    
-    # Check if local version differs from GitLab version.
-    return version != latest_version
+    if py_raw:
+        # Get version from download
+        latest_version = py_raw.split("version = '")[1].split("'\n")[0]
+
+        # Check if local version differs from GitLab version.
+        return version != latest_version
 
 
 def install_update():
