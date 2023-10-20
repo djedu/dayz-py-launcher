@@ -220,6 +220,8 @@ class App(ttk.Frame):
             'name': SERVER_DB.get(f'{ip}:{qport}').get('name'),
             'last_joined': str(datetime.now().astimezone())
         }
+        logInfo = f'{server_db_info.get("name")} - {ip}:{qport}'
+        logMessage = f'{logInfo} - Added to History'
         save_settings_to_json()
 
     def check_history(self, ip, qport):
@@ -853,6 +855,7 @@ class SettingsMenu:
             save_settings_to_json()
         elif directory != ():
             error_message = 'Warning: The selected directory does not exist.'
+            logging.error(f'{error_message} - {str(var)} - {directory}')
             print(error_message)
             app.MessageBoxError(message=error_message)
 
@@ -880,6 +883,7 @@ class SettingsMenu:
 
         except tk.TclError as tclerror:
             error_message = f'Invalid Entry. Must be a number.'
+            logging.error(f'{event.widget} - {error_message} - {tclerror}')
             print(error_message, tclerror)
             app.MessageBoxError(message=error_message)
 
@@ -962,11 +966,13 @@ def load_settings_from_file():
             try:
                 settings.update(json.load(json_file))
                 # print(json.dumps(settings, indent=4))
-            except json.decoder.JSONDecodeError:
+                logging.info(f'Load Settings: {json.dumps(settings, indent=4)}')
+            except json.decoder.JSONDecodeError as err:
                 error_message = (
                     'Error: Unable to load Settings file. Not in valid json format.\n\n'
                     'Try reconfiguring settings.'
                 )
+                logging.error(f'{error_message} - {err}')
                 print(error_message)
                 messagebox.showerror(message=error_message)
 
@@ -1228,7 +1234,9 @@ def thread_pool(server_pings, treeview_children, treeview_list):
         #     print(future)
         #     # print(f'done={future.done()}')
     except tk.TclError as te:
-        print(f'User probably "Refreshed All Servers" again before first one completed: {te}')
+        error_message = f'User probably "Refreshed All Servers" again before first one completed: {te}'
+        logging.error(error_message)
+        print(error_message)
 
 
 # TODO Build function for handling v1 Query
@@ -1257,7 +1265,6 @@ def refresh_selected():
 
             if ping:
                 app.treeview.item(id, text='', values=server_info + (ping,))
-                # app.update_idletasks()
             app.OnSingleClick('')
 
 
@@ -2173,11 +2180,13 @@ def get_latest_release(url):
     Used to download files from GitLab to be used for checking the latest version
     or downloading the latest install/upgrade script.
     """
-    response = requests.get(url)
-    if response.status_code == 200:
+     try:
+        response = requests.get(url)
+        response.raise_for_status()
         return response.text
-    else:
-        error_message = f'Error downloading URL: {url}\n\n{response.reason}'
+    except requests.exceptions.RequestException as err:
+        error_message = f'Error connecting to GitLab for Updates: {url}\n\n{err}'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
         return None
