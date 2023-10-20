@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.1.6'
+version = '1.1.7'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -1162,7 +1162,6 @@ def refresh_servers():
 
     # DayZ SA Launcher API. Set the inital Treeview sort to be by total
     # players online. From Highest to Lowest.
-    sort_column = 'players'
     dzsa_response = get_dzsa_data(dzsa_api_servers)
     if not dzsa_response:
         # Enable buttons now that API has failed. Allow user to try again
@@ -1170,7 +1169,8 @@ def refresh_servers():
             button.configure(state='enabled')
         return
 
-    servers = sort_server_info(dzsa_response['result'], sort_column)
+    sort_column = 'players'
+    servers = sorted(dzsa_response['result'], key=lambda x: x[sort_column], reverse=True)
 
     generate_server_db(servers)
 
@@ -2079,14 +2079,6 @@ def bool_to_yes_no(bool):
     """
     bools = ('No','Yes')
     return bools[bool]
-
-
-def sort_server_info(servers, column):
-    """
-    Sort list of servers by specified column/key. Used to sort the initial Server List
-    view by Most Populated servers first (total players)
-    """
-    return sorted(servers, key=lambda x: x[column], reverse=True)
 
 
 def treeview_sort_column(tv, col, reverse):
