@@ -2,6 +2,7 @@ import a2s
 import ctypes
 import hashlib
 import json
+import logging
 import os
 import platform
 import re
@@ -20,6 +21,10 @@ from threading import Event, Thread
 from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 from vdf2json import vdf2json
 
+
+logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
+                    format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
 version = '1.1.5'
@@ -169,12 +174,19 @@ class App(ttk.Frame):
         if self.treeview.selection():
             ip, _, qport = get_selected_ip(self.treeview.selection()[0])
             server_db_info = SERVER_DB.get(f'{ip}:{qport}')
+            logInfo = f'{server_db_info.get("name")} - {ip}:{qport}'
 
             if fav_state:
-                print('Add to Favorite')
+                logMessage = f'{logInfo} - Added to Favorites'
+                logging.info(logMessage)
+                print(logMessage)
+
                 settings['favorites'][f'{ip}:{qport}'] = {'name': server_db_info.get('name')}
             else:
-                print('Remove from Favorite')
+                logMessage = f'{logInfo} - Removed from Favorites'
+                logging.info(logMessage)
+                print(logMessage)
+
                 settings['favorites'].pop(f'{ip}:{qport}', None)
                 filter_treeview()
             save_settings_to_json()
@@ -184,6 +196,7 @@ class App(ttk.Frame):
                 f'No server is currently selected to add or remove from favorites. '
                 f'Please select a server first.'
             )
+            logging.error(message)
             print(error_message)
             self.favorite_var.set(value=False)
             self.MessageBoxError(message=error_message)
