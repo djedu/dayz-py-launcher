@@ -1970,6 +1970,7 @@ def get_dzsa_data(url):
 
         if api_timeout:
             warn_message = 'DZSA API Timeout has occured. Try again.'
+            logging.warning(warn_message)
             print(warn_message)
             app.MessageBoxWarn(message=warn_message)
             return None
@@ -1977,17 +1978,21 @@ def get_dzsa_data(url):
         if response.status_code == 200:
             return json.loads(response.content)
         else:
-            print(f'HTTP Status Code: {response.status_code}')
+            error_message = f'HTTP Status Code: {response.status_code}'
+            logging.error(error_message)
+            print(error_message)
             return None
 
     except requests.exceptions.ConnectionError as e:
         error_message = f'Error connecting to DZSA API:\n{e}'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(message=error_message)
         return None
 
     except json.decoder.JSONDecodeError as e:
         error_message = f'Invalid response from DZSA API:\n{e}\n\nTry again shortly.'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(message=error_message)
         return None
@@ -2249,6 +2254,7 @@ def update_check():
         latest_version = py_raw.split("version = '")[1].split("'\n")[0]
 
         # Check if local version differs from GitLab version.
+        logging.info(f'Installed version: {version} - Latest version: {latest_version}')
         return version != latest_version
 
 
