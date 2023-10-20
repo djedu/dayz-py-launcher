@@ -39,7 +39,7 @@ settings_json = 'dayz_py.json'
 main_branch_py = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_launcher.py'
 main_branch_sh = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh'
 
-# Header used in DZSA API request
+# Header used in API request
 headers = {
     'User-Agent': f'({appName}/{version}'
 }
@@ -1721,7 +1721,9 @@ def check_max_map_count():
     try:
         output = subprocess.check_output(['sysctl', 'vm.max_map_count'], universal_newlines=True)
         value = output.split('=')[1].strip()
-        print('Current vm.max_map_count:', value)
+        debug_message = f'Current vm.max_map_count: {value}'
+        logging.debug(debug_message)
+        print(debug_message)
 
         if int(value) >= 1048576:
             return True
@@ -1747,17 +1749,25 @@ def check_max_map_count():
                         text=True,
                         check=True
                     )
-                    print("Output:", result)
+                    debug_message = f'Output: {result}'
+                    logging.debug(debug_message)
+                    print(debug_message)
                     return True
                 except subprocess.CalledProcessError as e:
+                    error_code = f'Command failed with exit status: {e.returncode}'
+                    logging.error(error_code)
+                    print(error_code)
+                    error_output = f'Error output: {e.stderr}'
+                    logging.error(error_output)
+                    print(error_output)
                     MessageBoxError(message='Command failed. Check your password.')
-                    print("Command failed with exit status", e.returncode)
-                    print("Error output:", e.stderr)
                     return False
 
     except subprocess.CalledProcessError as e:
+        error_message = f'Error checking vm.max_map_count: {e}'
+        logging.error(error_message)
+        print(error_message)
         MessageBoxError(message='Failed to get max_map_count')
-        print("Error:", e)
         return False
 
 
@@ -1813,24 +1823,25 @@ def a2s_query(ip, qport, update: bool=True):
         ping = round(info.ping * 1000)
 
     except TimeoutError:
-        # message = f'Timed out getting info/ping from Server {ip} using Qport {qport}'
-        # print(message)
+        debug_message = f'Timed out getting info/ping from Server {ip} using Qport {qport}'
+        logging.debug(debug_message)
+        print(debug_message)
         ping = 999
         info = None
     except IndexError as ie:
-        message = f'IndexError from Server {ip} using Qport {qport}'
-        print(message, ie)
+        error_message = f'IndexError from Server {ip} using Qport {qport} - Info: {info} - {ie}'
+        logging.error(error_message)
         print(info)
         ping = 999
         info = None
     except KeyError as ke:
-        message = f'KeyError from Server {ip} using Qport {qport}'
-        print(message, ke)
+        error_message = f'KeyError from Server {ip} using Qport {qport} - Info: {info} - {ke}'
+        logging.error(error_message)
         print(info)
         print(ip, qport)
-        print(json.dumps(SERVER_DB, indent=4))
         ping = 999
         info = None
+        print(json.dumps(server_update, indent=4))
 
     return ping, info
 
@@ -1868,8 +1879,9 @@ def a2s_mods(ip, qport):
         SERVER_DB[f'{ip}:{qport}']['mods'] = update_mod_list(api_mod_list, server_mod_list)
 
     except TimeoutError:
-        message = f'Timed out getting mods from Server {ip} using Qport {qport}'
-        print(message)
+        debug_message = f'Timed out getting mods from Server {ip} using Qport {qport}'
+        logging.debug(debug_message)
+        print(debug_message)
         mods_dict = None
 
     return mods_dict
@@ -1891,7 +1903,7 @@ def get_ping_cmd(ip):
         # Check if the command was successful
         if result.returncode == 0:
             # Use regular expressions to extract ping time in milliseconds
-            ping_time_match = re.search(r"time=([\d.]+) ms", result.stdout)
+            ping_time_match = re.search(r'time=([\d.]+) ms', result.stdout)
             # print(ping_time_match)
             if ping_time_match:
                 ping = ping_time_match.group(1)
@@ -1901,10 +1913,14 @@ def get_ping_cmd(ip):
                 return None
         else:
             return None
-            print("Error: " + result.stderr)
+            error_message = f'Ping command Error: {result.stderr}'
+            logging.error(error_message)
+            print(error_message)
     except Exception as e:
+        error_message = f'Ping command Exception: {str(e)}'
+        logging.error(error_message)
+        print(error_message)
         return None
-        print("Exception: " + str(e))
 
 
 def update_mod_list(list1, list2):
@@ -2157,6 +2173,8 @@ def detect_install_directories():
 
         settings['dayz_dir'] = os.path.join(path, 'steamapps/common/DayZ')
         settings['steam_dir'] = os.path.join(path, f'steamapps/workshop')
+        logging.debug(f'Setting DayZ directory as: settings["dayz_dir"]')
+        logging.debug(f'Setting Steam directory as: settings["steam_dir"]')
 
     # if not os.path.exists(os.path.join(settings.get('dayz_dir'), '!dayz_py')):
     #     os.makedirs(os.path.join(settings.get('dayz_dir'), '!dayz_py'))
@@ -2193,6 +2211,8 @@ def check_platform():
         linux_os = True
     elif system_os.lower() == 'windows':
         windows_os = True
+
+    logging.debug(f'Platform: {system_os}')
 
 
 def get_latest_release(url):
@@ -2239,6 +2259,7 @@ def install_update():
             script_file.write(install_script)
     else:
         error_message = 'Failed to download the script.'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
         return
@@ -2250,9 +2271,11 @@ def install_update():
     try:
         subprocess.run(['./' + script], check=True)
         info_message = 'Install complete. Restart the Launcher to apply changes.'
+        logging.info(info_message)
         app.MessageBoxInfo(message=info_message)
     except subprocess.CalledProcessError as e:
         error_message = f'Failed to run the Upgrade Script.\n\n{e}'
+        logging.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
 
