@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.1.7'
+version = '1.2.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -77,6 +77,9 @@ class App(ttk.Frame):
 
         # List for Map Combobox
         self.dayz_maps = []
+
+        # List for Version Combobox
+        self.dayz_versions = []
 
         # Create widgets :)
         self.setup_widgets()
@@ -253,6 +256,7 @@ class App(ttk.Frame):
         # Clear Filter Boxes
         self.entry.delete('0', 'end')
         self.map_combobox.set(self.default_map_combobox_text)
+        self.version_combobox.set(self.default_version_combobox_text)
 
         # Clear Server Info tab
         self.server_info_text.set('')
@@ -268,13 +272,22 @@ class App(ttk.Frame):
         self.show_sponsored_var.set(value=False)
         self.favorite_var.set(value=False)
 
-    def combobox_focus_out(self):
+    def map_combobox_focus_out(self):
         """
         Sets the default text/string ('Map') in the Map dropdown/combobox
         (visible only when there is no map selected) and also refreshes the
         Treeview filters
         """
         self.map_combobox.set(self.default_map_combobox_text)
+        filter_treeview()
+
+    def ver_combobox_focus_out(self):
+        """
+        Sets the default text/string ('Version') in the Version dropdown/combobox
+        (visible only when there is no map selected) and also refreshes the
+        Treeview filters
+        """
+        self.version_combobox.set(self.default_version_combobox_text)
         filter_treeview()
 
     def on_tab_change(self, event):
@@ -287,16 +300,17 @@ class App(ttk.Frame):
             # If "Server List" tab is selected
             self.refresh_all_button.grid(row=0, column=0, padx=5, pady=(0, 5), sticky='nsew')
             self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 10), sticky='nsew')
-            self.keypress_filter.grid(row=2, column=0, padx=5, pady=5, sticky='ew')
+            self.keypress_filter.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
             self.entry.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
             self.map_combobox.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
-            self.show_favorites.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
-            self.show_history.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
-            self.show_sponsored.grid(row=7, column=0, padx=5, pady=5, sticky='ew')
-            self.clear_filter.grid(row=8, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=9, column=0, padx=(20, 20), pady=10, sticky='ew')
-            self.join_server_button.grid(row=10, column=0, padx=5, pady=5, sticky='nsew')
-            self.favorite.grid(row=11, column=0, padx=5, pady=10, sticky='ew')
+            self.version_combobox.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
+            self.show_favorites.grid(row=6, column=0, padx=5, pady=(5, 0), sticky='ew')
+            self.show_history.grid(row=7, column=0, padx=5, pady=0, sticky='ew')
+            self.show_sponsored.grid(row=8, column=0, padx=5, pady=(0, 5), sticky='ew')
+            self.clear_filter.grid(row=9, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=10, column=0, padx=(20, 20), pady=5, sticky='ew')
+            self.join_server_button.grid(row=11, column=0, padx=5, pady=5, sticky='nsew')
+            self.favorite.grid(row=12, column=0, padx=5, pady=5, sticky='new')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -462,10 +476,23 @@ class App(ttk.Frame):
         self.map_combobox.bind('<FocusIn>', lambda e: (
             self.map_combobox.set('') if self.map_combobox.get() == self.default_map_combobox_text else None)
         )
-        self.map_combobox.bind('<FocusOut>', lambda e: self.combobox_focus_out() if self.map_combobox.get() == '' else app.map_combobox.selection_clear())
+        self.map_combobox.bind('<FocusOut>', lambda e: self.map_combobox_focus_out() if self.map_combobox.get() == '' else app.map_combobox.selection_clear())
         self.map_combobox.bind('<Return>', lambda e: filter_treeview())
         self.map_combobox.bind('<KP_Enter>', lambda e: filter_treeview())
         self.map_combobox.bind('<<ComboboxSelected>>', lambda e: filter_treeview())
+
+        # Version List Combobox
+        self.default_version_combobox_text = 'Version'
+        self.version_combobox = ttk.Combobox(self.widgets_frame, values=self.dayz_versions)
+        self.version_combobox.set(self.default_version_combobox_text)
+
+        self.version_combobox.bind('<FocusIn>', lambda e: (
+            self.version_combobox.set('') if self.version_combobox.get() == self.default_version_combobox_text else None)
+        )
+        self.version_combobox.bind('<FocusOut>', lambda e: self.ver_combobox_focus_out() if self.version_combobox.get() == '' else app.version_combobox.selection_clear())
+        self.version_combobox.bind('<Return>', lambda e: filter_treeview())
+        self.version_combobox.bind('<KP_Enter>', lambda e: filter_treeview())
+        self.version_combobox.bind('<<ComboboxSelected>>', lambda e: filter_treeview())
 
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
@@ -673,6 +700,7 @@ class App(ttk.Frame):
             self.favorite,
             self.entry,
             self.map_combobox,
+            self.version_combobox,
             self.separator,
             self.refresh_mod_button,
             self.refresh_info_button,
@@ -688,6 +716,7 @@ class App(ttk.Frame):
             self.keypress_filter,
             self.entry,
             self.map_combobox,
+            self.version_combobox,
             self.show_favorites,
             self.show_history,
             self.show_sponsored,
@@ -999,6 +1028,8 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     filter_text = app.entry.get()
     # Gets values from Map combobox
     filter_map = app.map_combobox.get()
+    # Gets values from Version combobox
+    filter_version = app.version_combobox.get()
 
     # Clear Server Info tab
     app.server_info_text.set('')
@@ -1025,6 +1056,10 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     if filter_map != '' and filter_map != app.default_map_combobox_text:
         map_selected = True
 
+    version_selected = False
+    if filter_version != '' and filter_version != app.default_version_combobox_text:
+        version_selected = True
+
     # Gets values from Only Show Favorites checkbox
     show_favorites = app.show_favorites_var.get()
     # Gets values from Only Show History checkbox
@@ -1034,7 +1069,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
 
     # Check if ANY of the bools above are true. Then hides/detaches Treeview items
     # that do not match. Stores hidden items in the global 'hidden_items' list.
-    bool_filter_list = [text_entered, map_selected, show_favorites, show_history, show_sponsored]
+    bool_filter_list = [text_entered, map_selected, version_selected, show_favorites, show_history, show_sponsored]
     if any(bool_filter_list):
         for item_id in app.treeview.get_children():
             server_values = app.treeview.item(item_id, 'values')
@@ -1045,14 +1080,13 @@ def filter_treeview(chkbox_not_toggled: bool=True):
             qport = server_values[6]
             # str_values = str(server_values)
             if text_entered and filter_text.lower() not in server_name.lower() and filter_text not in ip_port:
-                # print(f'Hiding: {server_values}')
                 hide_treeview_item(item_id)
 
             if map_selected and filter_map.lower() not in map_name.lower():
-                # print(f'Hiding: {server_values}')
                 hide_treeview_item(item_id)
-                # Remove highlight from selected entry
-                # app.map_combobox.selection_clear()
+
+            if version_selected and filter_version.lower() not in SERVER_DB[f'{ip}:{qport}'].get('version'):
+                hide_treeview_item(item_id)
 
             if show_favorites and not settings.get('favorites').get(f'{ip}:{qport}'):
                 hide_treeview_item(item_id)
@@ -1096,6 +1130,7 @@ def generate_server_db(servers):
         ip = server.get("endpoint").get("ip")
         qport = server.get("endpoint").get("port")
         server_map = server.get('map').title()
+        dayz_version = server.get('version')
 
         SERVER_DB[f'{ip}:{qport}'] = {
             'sponsor': server.get('sponsor'),
@@ -1114,7 +1149,7 @@ def generate_server_db(servers):
             'maxPlayers': server.get('maxPlayers'),
             'environment': server.get('environment'),
             'password': server.get('password'),
-            'version': server.get('version'),
+            'version': dayz_version,
             'vac': server.get('vac'),
             'gamePort': server.get("gamePort"),
             'shard': server.get('shard'),
@@ -1128,10 +1163,17 @@ def generate_server_db(servers):
         if server_map not in app.dayz_maps and server_map != '':
             app.dayz_maps.append(server_map)
 
-    # Sort the dayzmap list ignoring case
+        # Generate Version list for Filter Combobox
+        if dayz_version not in app.dayz_versions and dayz_version != '':
+            app.dayz_versions.append(dayz_version)
+
+    # Sort and set values for the dayzmap list ignoring case
     app.dayz_maps = sorted(app.dayz_maps, key=str.casefold)
     app.map_combobox['values'] = app.dayz_maps
-    # print(app.dayz_maps)
+
+    # Sort and set values for the dayz_versions list
+    app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
+    app.version_combobox['values'] = app.dayz_versions
 
 
 def refresh_servers():
@@ -2040,6 +2082,7 @@ def load_fav_history():
             maxPlayers = info.max_players
             gamePort = info.port
             time = info.keywords[-5:]
+            dayz_version = info.version
 
             treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', qport, ping)
             app.treeview.insert('', tk.END, values=treeview_values)
@@ -2048,14 +2091,23 @@ def load_fav_history():
             if server_map not in app.dayz_maps and server_map != '':
                 app.dayz_maps.append(server_map)
 
+            # Generate Version list for Filter Combobox
+            if dayz_version not in app.dayz_versions and dayz_version != '':
+                app.dayz_versions.append(dayz_version)
+
         else:
             # If the server is down or unreachable, just insert info stored in favorites/history
             treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', qport, '')
             app.treeview.insert('', tk.END, values=treeview_values)
             SERVER_DB[f'{ip}:{qport}'] = {'name': stored_name, 'mods': []}
 
+    # Sort and set values for the dayzmap list ignoring case
     app.dayz_maps = sorted(app.dayz_maps)
     app.map_combobox['values'] = app.dayz_maps
+
+    # Sort and set values for the dayz_versions list
+    app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
+    app.version_combobox['values'] = app.dayz_versions
 
 
 def get_serverdb_mods(ip, qport):
