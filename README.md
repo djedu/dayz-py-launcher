@@ -47,7 +47,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 ## Not working / Known limitations
 
 * No App update checks. Needs to be manually updated from here/Gitlab.
-* Joining a server that is password protected
+* Joining a server that is password protected (Need special handling?)
 * Flatpak may not work since it's untested.
 * Windows - Unable to join servers. The GUI stutters/hangs during loading and pinging servers after the 'Refresh All Servers'.
 
