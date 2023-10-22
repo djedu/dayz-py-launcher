@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.2.0'
+version = '1.2.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -72,8 +72,11 @@ class App(ttk.Frame):
 
         # Make the app responsive
         for index in [0, 1]:
-            self.columnconfigure(index=index, weight=1)
+            # self.columnconfigure(index=index, weight=1)
             self.rowconfigure(index=index, weight=1)
+
+        self.columnconfigure(index=0, weight=5)
+        self.columnconfigure(index=1, weight=1)
 
         # List for Map Combobox
         self.dayz_maps = []
@@ -600,7 +603,7 @@ class App(ttk.Frame):
             self.tab_2,
             textvariable=self.server_info_text,
             justify='center',
-            wraplength=925,
+            wraplength=920,
         )
         self.label.grid(row=1, column=0, padx=(75, 0), sticky='nsew')
 
