@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.1'
+version = '1.3.2'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -150,7 +150,6 @@ class App(ttk.Frame):
                 # selected server info from being displayed for a newly selected server that is down
                 self.server_info_text.set('')
                 self.server_mods_tv.delete(*self.server_mods_tv.get_children())
-
 
     def OnDoubleClick(self, event):
         """
@@ -359,10 +358,12 @@ class App(ttk.Frame):
         missing mods.
         """
         if linux_os:
-            open_cmd = 'xdg-open'
+            open_cmd = ['xdg-open', url]
+        elif windows_os:
+            open_cmd = ['cmd', '/c', 'start', url]
 
         try:
-            subprocess.Popen([open_cmd, url])
+            subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to launch Steam Mod URL.\n\n{e}'
             print(error_message)
@@ -597,7 +598,7 @@ class App(ttk.Frame):
         )
         for col in server_mods_cols:
             self.server_mods_tv.heading(col, text=col, anchor='w', command=lambda _col=col:
-                                  treeview_sort_column(self.server_mods_tv, _col, False))
+                                        treeview_sort_column(self.server_mods_tv, _col, False))
 
         # self.server_mods_tv.pack(expand=True, fill='both')
         self.server_mods_tv.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky='nsew')
@@ -645,7 +646,7 @@ class App(ttk.Frame):
         )
         for col in installed_mods_cols:
             self.installed_mods_tv.heading(col, text=col, anchor='w', command=lambda _col=col:
-                                  treeview_sort_column(self.installed_mods_tv, _col, False))
+                                           treeview_sort_column(self.installed_mods_tv, _col, False))
 
         self.installed_mods_tv.pack(expand=True, fill='both')
         self.installed_mods_tv.bind('<Double-1>', self.OnDoubleClick)
@@ -890,7 +891,6 @@ class SettingsMenu:
         )
         self.clear_history_button.grid(row=9, column=1, padx=(0, 95), pady=(7, 10), sticky='e')
 
-
     def select_dir(self, var):
         """
         Used to Prompt user for selecting DayZ and Steam install
@@ -908,7 +908,6 @@ class SettingsMenu:
             logging.error(f'{error_message} - {str(var)} - {directory}')
             print(error_message)
             app.MessageBoxError(message=error_message)
-
 
     def on_entry_focus_change(self, event):
         """
@@ -2182,7 +2181,7 @@ def treeview_sort_column(tv, col, reverse):
 
     try:
         # Used for sorting numerically. Mainly to handle the mod size column and other int
-        l.sort(key=lambda t: float(t[0].replace(",","")), reverse=reverse)
+        l.sort(key=lambda t: float(t[0].replace(",", "")), reverse=reverse)
     except:
         # Sort all other columns
         l.sort(reverse=reverse)
@@ -2193,7 +2192,7 @@ def treeview_sort_column(tv, col, reverse):
 
     # Reverse sort next time
     tv.heading(col, text=col, command=lambda _col=col:
-                treeview_sort_column(tv, _col, not reverse))
+               treeview_sort_column(tv, _col, not reverse))
 
 
 def windows_dark_title_bar(root):
