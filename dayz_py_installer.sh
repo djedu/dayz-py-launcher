@@ -48,3 +48,4 @@ Icon=$share/dayz_icon.png
 Categories=Game
 	END
 fi
+
