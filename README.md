@@ -22,6 +22,9 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * Click the 'Refresh Selected' button to query the currently selected/highlighted server and pull the latest info (like Player count, Gametime, Ping, Mods)
 
+* The 'Mods' search box allows you to enter a comma separated list. This will filter down the server list to only show server that contain matching mods for all mods you enter. Make sure to put a comma after each mod. 
+(Example: winter chernarus, code locks, basebuildingplus)
+
 * Select server to view info and installed mods under the 'Server Info' tab. Doble click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
 
 * Set your DayZ 'Profile Name' under the Settings tab. If blank, you won't be able to join servers. 
