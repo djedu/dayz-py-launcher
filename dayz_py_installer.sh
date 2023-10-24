@@ -32,7 +32,7 @@ Path=$share
 Comment=DayZ Py Launcher
 Icon=$share/dayz_icon.png
 Categories=Game
-END
+	END
 
 if [[ $is_steam_deck -eq 1 ]]; then
 cat <<-END > "$HOME/Desktop/dayz_py.desktop"
@@ -46,5 +46,5 @@ Path=$share
 Comment=DayZ Py Launcher
 Icon=$share/dayz_icon.png
 Categories=Game
-END
+	END
 fi
