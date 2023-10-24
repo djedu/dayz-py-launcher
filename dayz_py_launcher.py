@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.2.1'
+version = '1.3.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -258,6 +258,7 @@ class App(ttk.Frame):
         """
         # Clear Filter Boxes
         self.entry.delete('0', 'end')
+        self.mod_text.set(self.default_mod_text)
         self.map_combobox.set(self.default_map_combobox_text)
         self.version_combobox.set(self.default_version_combobox_text)
 
@@ -305,15 +306,16 @@ class App(ttk.Frame):
             self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 10), sticky='nsew')
             self.keypress_filter.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
             self.entry.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
-            self.map_combobox.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
-            self.version_combobox.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
-            self.show_favorites.grid(row=6, column=0, padx=5, pady=(5, 0), sticky='ew')
-            self.show_history.grid(row=7, column=0, padx=5, pady=0, sticky='ew')
-            self.show_sponsored.grid(row=8, column=0, padx=5, pady=(0, 5), sticky='ew')
-            self.clear_filter.grid(row=9, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=10, column=0, padx=(20, 20), pady=5, sticky='ew')
-            self.join_server_button.grid(row=11, column=0, padx=5, pady=5, sticky='nsew')
-            self.favorite.grid(row=12, column=0, padx=5, pady=5, sticky='new')
+            self.mod_entry.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
+            self.map_combobox.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
+            self.version_combobox.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
+            self.show_favorites.grid(row=7, column=0, padx=5, pady=(5, 0), sticky='ew')
+            self.show_history.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
+            self.show_sponsored.grid(row=9, column=0, padx=5, pady=(0, 5), sticky='ew')
+            self.clear_filter.grid(row=10, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=11, column=0, padx=(20, 20), pady=5, sticky='ew')
+            self.join_server_button.grid(row=12, column=0, padx=5, pady=5, sticky='nsew')
+            self.favorite.grid(row=13, column=0, padx=5, pady=5, sticky='nsew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -497,6 +499,17 @@ class App(ttk.Frame):
         self.version_combobox.bind('<KP_Enter>', lambda e: filter_treeview())
         self.version_combobox.bind('<<ComboboxSelected>>', lambda e: filter_treeview())
 
+        # Filter/Search Entry Box
+        self.mod_text = tk.StringVar()
+        self.default_mod_text = 'Mods'
+
+        self.mod_entry = ttk.Entry(self.widgets_frame, textvariable=self.mod_text)
+        self.mod_entry.insert(0, self.default_mod_text)
+        self.mod_entry.bind('<FocusIn>', lambda e: (self.mod_entry.delete('0', 'end')) if self.mod_entry.get() == self.default_mod_text else None)
+        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else None)
+        self.mod_entry.bind('<Return>', lambda e: filter_treeview())
+        self.mod_entry.bind('<KP_Enter>', lambda e: filter_treeview())
+
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
         self.show_favorites = ttk.Checkbutton(
@@ -677,7 +690,7 @@ class App(ttk.Frame):
         )
         self.switch.grid(row=99, column=0, padx=5, pady=10, sticky='se')
         # Force Theme Switch to the bottom of the window
-        self.widgets_frame.grid_rowconfigure(12, weight=5)
+        self.widgets_frame.grid_rowconfigure(14, weight=5)
 
         # Sizegrip (Resize Window icon located at bottom right)
         self.sizegrip = ttk.Sizegrip(self)
@@ -702,6 +715,7 @@ class App(ttk.Frame):
             self.show_sponsored,
             self.favorite,
             self.entry,
+            self.mod_entry,
             self.map_combobox,
             self.version_combobox,
             self.separator,
@@ -718,6 +732,7 @@ class App(ttk.Frame):
             self.refresh_selected_button,
             self.keypress_filter,
             self.entry,
+            self.mod_entry,
             self.map_combobox,
             self.version_combobox,
             self.show_favorites,
@@ -1033,6 +1048,8 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     filter_map = app.map_combobox.get()
     # Gets values from Version combobox
     filter_version = app.version_combobox.get()
+    # Gets values from Mods Entry box
+    mods_text = app.mod_entry.get()
 
     # Clear Server Info tab
     app.server_info_text.set('')
@@ -1063,6 +1080,12 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     if filter_version != '' and filter_version != app.default_version_combobox_text:
         version_selected = True
 
+    mods_entered = False
+    if mods_text != '' and mods_text != app.default_mod_text:
+        # Convert user entered comma separated string/text to list
+        mods_list = [x.strip() for x in mods_text.split(',')]
+        mods_entered = True
+
     # Gets values from Only Show Favorites checkbox
     show_favorites = app.show_favorites_var.get()
     # Gets values from Only Show History checkbox
@@ -1072,7 +1095,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
 
     # Check if ANY of the bools above are true. Then hides/detaches Treeview items
     # that do not match. Stores hidden items in the global 'hidden_items' list.
-    bool_filter_list = [text_entered, map_selected, version_selected, show_favorites, show_history, show_sponsored]
+    bool_filter_list = [text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_sponsored]
     if any(bool_filter_list):
         for item_id in app.treeview.get_children():
             server_values = app.treeview.item(item_id, 'values')
@@ -1090,6 +1113,13 @@ def filter_treeview(chkbox_not_toggled: bool=True):
 
             if version_selected and filter_version.lower() not in SERVER_DB[f'{ip}:{qport}'].get('version'):
                 hide_treeview_item(item_id)
+
+            if mods_entered:
+                # Generate list of mods from server info in SERVER_DB
+                mod_names = [mod['name'] for mod in SERVER_DB[f'{ip}:{qport}'].get('mods')]
+                # Make sure ALL mods user entered have a match in the server's mod list (case insensitive).
+                if not all(any(ele.lower() in mod.lower() for mod in mod_names) for ele in mods_list):
+                    hide_treeview_item(item_id)
 
             if show_favorites and not settings.get('favorites').get(f'{ip}:{qport}'):
                 hide_treeview_item(item_id)
@@ -2391,7 +2421,7 @@ if __name__ == '__main__':
     app.pack(fill='both', expand=True)
 
     # Set initial window size
-    root.geometry('1280x600')
+    root.geometry('1280x625')
 
     # Warn user if not running on linux_os:
     if not linux_os:
