@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Use DZGUI's check for Steam Deck (https://github.com/aclist/dztui)
+cpu=$(cat /proc/cpuinfo | grep "AMD Custom APU 0405")
+if [[ -n "$cpu" ]]; then
+    is_steam_deck=1
+else
+    is_steam_deck=0
+
 # Set paths
 desktopFile="$HOME/.local/share/applications/dayz_py.desktop"
 share="$HOME/.local/share/dayz_py"
@@ -26,3 +33,18 @@ Comment=DayZ Py Launcher
 Icon=$share/dayz_icon.png
 Categories=Game
 END
+
+if [[ $is_steam_deck -eq 1 ]]; then
+cat <<-END > "$HOME/Desktop/dayz_py.desktop"
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=python $dayz_py_file
+Name=DayZ Py Launcher
+Path=$share
+Comment=DayZ Py Launcher
+Icon=$share/dayz_icon.png
+Categories=Game
+END
+fi
