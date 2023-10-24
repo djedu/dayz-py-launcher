@@ -473,6 +473,17 @@ class App(ttk.Frame):
         # self.keypress_trace_id = self.filter_text.trace_add("write", lambda *args: filter_treeview())
         self.focus_trace_id = self.entry.bind('<FocusOut>', lambda e: filter_treeview())
 
+        # Filter/Search Entry Box
+        self.mod_text = tk.StringVar()
+        self.default_mod_text = 'Mods'
+
+        self.mod_entry = ttk.Entry(self.widgets_frame, textvariable=self.mod_text)
+        self.mod_entry.insert(0, self.default_mod_text)
+        self.mod_entry.bind('<FocusIn>', lambda e: (self.mod_entry.delete('0', 'end')) if self.mod_entry.get() == self.default_mod_text else None)
+        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else None)
+        self.mod_entry.bind('<Return>', lambda e: filter_treeview())
+        self.mod_entry.bind('<KP_Enter>', lambda e: filter_treeview())
+
         # Map List Combobox
         self.default_map_combobox_text = 'Map'
         self.map_combobox = ttk.Combobox(self.widgets_frame, values=self.dayz_maps)
@@ -498,17 +509,6 @@ class App(ttk.Frame):
         self.version_combobox.bind('<Return>', lambda e: filter_treeview())
         self.version_combobox.bind('<KP_Enter>', lambda e: filter_treeview())
         self.version_combobox.bind('<<ComboboxSelected>>', lambda e: filter_treeview())
-
-        # Filter/Search Entry Box
-        self.mod_text = tk.StringVar()
-        self.default_mod_text = 'Mods'
-
-        self.mod_entry = ttk.Entry(self.widgets_frame, textvariable=self.mod_text)
-        self.mod_entry.insert(0, self.default_mod_text)
-        self.mod_entry.bind('<FocusIn>', lambda e: (self.mod_entry.delete('0', 'end')) if self.mod_entry.get() == self.default_mod_text else None)
-        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else None)
-        self.mod_entry.bind('<Return>', lambda e: filter_treeview())
-        self.mod_entry.bind('<KP_Enter>', lambda e: filter_treeview())
 
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
