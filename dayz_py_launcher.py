@@ -358,6 +358,9 @@ class App(ttk.Frame):
         Opens the mod in the Steam Workshop. Used for subscribing/downloading
         missing mods.
         """
+        if linux_os:
+            steam_cmd = 'xdg-open'
+            
         try:
             subprocess.Popen([steam_cmd, url])
         except subprocess.CalledProcessError as e:
