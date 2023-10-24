@@ -27,7 +27,7 @@ logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.0'
+version = '1.3.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -359,10 +359,10 @@ class App(ttk.Frame):
         missing mods.
         """
         if linux_os:
-            steam_cmd = 'xdg-open'
-            
+            open_cmd = 'xdg-open'
+
         try:
-            subprocess.Popen([steam_cmd, url])
+            subprocess.Popen([open_cmd, url])
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to launch Steam Mod URL.\n\n{e}'
             print(error_message)
@@ -2238,7 +2238,19 @@ def detect_install_directories():
     if linux_os:
         home_dir = os.path.expanduser('~')
         default_steam_dir = f'{home_dir}/.local/share/Steam'
-        vdfDir = f'{default_steam_dir}/steamapps/'
+        flatpak_steam_dir = f'{home_dir}/.var/app/com.valvesoftware.Steam/data/Steam'
+
+        if os.path.isdir(default_steam_dir):
+            vdfDir = f'{default_steam_dir}/steamapps/'
+
+        elif os.path.isdir(flatpak_steam_dir):
+            vdfDir = f'{flatpak_steam_dir}/steamapps/'
+
+        else:
+            logging.error('Unable to detect Linux Steam install directories')
+            return
+
+        logging.debug(f'Steam libraryfolders directory set to: {vdfDir}')
 
     # Set default directories for Windows
     elif windows_os:
@@ -2260,10 +2272,13 @@ def detect_install_directories():
                 path = entry.get('path')
                 # print(path)
 
-        settings['dayz_dir'] = os.path.join(path, 'steamapps/common/DayZ')
-        settings['steam_dir'] = os.path.join(path, f'steamapps/workshop')
-        logging.debug(f'Setting DayZ directory as: settings["dayz_dir"]')
-        logging.debug(f'Setting Steam directory as: settings["steam_dir"]')
+                settings['dayz_dir'] = os.path.join(path, 'steamapps/common/DayZ')
+                settings['steam_dir'] = os.path.join(path, f'steamapps/workshop')
+                logging.debug(f'Setting DayZ directory as: {settings["dayz_dir"]}')
+                logging.debug(f'Setting Steam directory as: {settings["steam_dir"]}')
+
+    else:
+        logging.error('Unable to detect DayZ & Workshop directories')
 
     # if not os.path.exists(os.path.join(settings.get('dayz_dir'), '!dayz_py')):
     #     os.makedirs(os.path.join(settings.get('dayz_dir'), '!dayz_py'))
