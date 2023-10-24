@@ -59,6 +59,9 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 ## Installation
 
+* Depending on your Python installation and/or Linux Distro, you may need to install additional packages like Tkinter. On Manjaro/Arch this can be installed by running ...
+"sudo pacman -S tk" from the terminal.
+
 ### Installer
 
 Run this installer script in your terminal...
