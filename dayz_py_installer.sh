@@ -20,20 +20,6 @@ mkdir -p "$share"
 curl -L $tarDownload | tar zxf - --strip-components=1 -C "$share"
 
 # Write the content to the desktopFile
-[[ -f $desktopFile ]] && rm $desktopFile
-cat <<-END > "$desktopFile"
-[Desktop Entry]
-Version=1.0
-Type=Application
-Terminal=false
-Exec=python $dayz_py_file
-Name=DayZ Py Launcher
-Path=$share
-Comment=DayZ Py Launcher
-Icon=$share/dayz_icon.png
-Categories=Game
-	END
-
 if [[ $is_steam_deck -eq 1 ]]; then
 cat <<-END > "$HOME/Desktop/dayz_py.desktop"
 [Desktop Entry]
@@ -49,3 +35,16 @@ Categories=Game
 	END
 fi
 
+[[ -f $desktopFile ]] && rm $desktopFile
+cat <<-END > "$desktopFile"
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=python $dayz_py_file
+Name=DayZ Py Launcher
+Path=$share
+Comment=DayZ Py Launcher
+Icon=$share/dayz_icon.png
+Categories=Game
+	END
