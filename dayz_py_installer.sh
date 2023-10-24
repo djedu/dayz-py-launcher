@@ -6,6 +6,7 @@ if [[ -n "$cpu" ]]; then
     is_steam_deck=1
 else
     is_steam_deck=0
+fi
 
 write_desktop_file(){
 cat <<-END
