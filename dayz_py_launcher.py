@@ -22,18 +22,21 @@ from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 from vdf2json import vdf2json
 
 
-logging.basicConfig(filename='dayz_py.log', level=logging.DEBUG, filemode='w',
+# Get the absolute path of the directory containing the current script
+app_directory = os.path.dirname(os.path.abspath(__file__))
+
+loggingFile = os.path.join(app_directory, 'dayz_py.log')
+logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
                     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.2'
+version = '1.3.3'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
 app_id = '221100'
-# home_dir = os.path.expanduser('~')
-settings_json = 'dayz_py.json'
+settings_json = os.path.join(app_directory, 'dayz_py.json')
 
 # Used for checking/downloading updates
 main_branch_py = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_launcher.py'
@@ -1487,7 +1490,7 @@ def get_installed_mods(directory):
         total_size += mod_size
         MOD_DB[mod] = {
             'name': mod_name,
-            'size': f'{round(mod_size / (1024 ** 2), 2):,}', # Size in MBs
+            'size': f'{round(mod_size / (1024 ** 2), 2):,}',  # Size in MBs
             # 'size': round(mod_size / (1024 ** 2), 2),
             'url': f'{workshop_url}{mod}'
         }
@@ -2089,9 +2092,13 @@ def load_fav_history():
     # Get all IP:Qports & server 'names' from Favorites and History
     # Merge favorites and history into one dict.
     fav_history = settings.get('favorites') | settings.get('history')
+    
+    MAX_WORKERS = settings.get('max_sim_pings')
+    if MAX_WORKERS < 1:
+        MAX_WORKERS = 1
 
     # Make the querying of each server multithreaded
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # Create a list to store the futures
         futures = []
         for server, values in fav_history.items():
@@ -2419,7 +2426,8 @@ if __name__ == '__main__':
 
     # Icon Source:
     # https://www.wallpaperflare.com/dayz-video-games-minimalism-monochrome-typography-artwork-wallpaper-pjmat
-    img = PhotoImage(file='dayz_icon.png')
+    iconFile = os.path.join(app_directory, 'dayz_icon.png')
+    img = PhotoImage(file=iconFile)
 
     if (settings.get('dayz_dir') == '' or not os.path.exists(settings.get('dayz_dir'))):
         detect_install_directories()
@@ -2431,7 +2439,8 @@ if __name__ == '__main__':
 
     # Set the theme/mode configured in the settings
     # Source: https://github.com/rdbende/Azure-ttk-theme/tree/gif-based/
-    root.tk.call('source', 'azure.tcl')
+    themeFile = os.path.join(app_directory, 'azure.tcl')
+    root.tk.call('source', themeFile)
     root.tk.call('set_theme', settings.get('theme'))
 
     app = App(root)
