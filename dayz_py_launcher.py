@@ -22,7 +22,7 @@ from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 from vdf2json import vdf2json
 
 
-# Get the absolute path of the directory containing the current script
+# Get the absolute path of the directory containing DayZ Py Launcher
 app_directory = os.path.dirname(os.path.abspath(__file__))
 
 loggingFile = os.path.join(app_directory, 'dayz_py.log')
