@@ -31,7 +31,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.3'
+version = '1.3.4'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -1558,10 +1558,15 @@ def generate_mod_treeview():
     Checks for broken symlinks, removes if necessary. Creates symlinks
     for installed mods.
     """
-    # workshop_dir = settings.get('steam_dir')
     workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
-    # symlink_dir = os.path.join(settings.get('dayz_dir'), '!dayz_py')
     symlink_dir = settings.get('dayz_dir')
+
+    # Check if workshop_dir exists, if not create it
+    if not os.path.exists(workshop_dir):
+        os.makedirs(workshop_dir)
+        debug_message = f"Workshop Directory created: {workshop_dir}"
+        logging.debug(debug_message)
+        print(debug_message)
 
     remove_broken_symlinks(symlink_dir)
     create_symlinks(workshop_dir, symlink_dir)
@@ -1570,8 +1575,6 @@ def generate_mod_treeview():
     get_installed_mods(workshop_dir)
 
     for mod, info in MOD_DB.items():
-        # print(mod, info)
-        # if mod != 'total_size':
         app.installed_mods_tv.insert('', tk.END, values=(
             f'@{encode(mod)}',
             info.get('name'),
@@ -1580,8 +1583,6 @@ def generate_mod_treeview():
             info.get('size')
             )
         )
-        # else:
-        #     app.installed_mods_tv.insert('', tk.END, values=('', '', '', 'Total Size', f'{info} GBs'))
 
 
 def compare_modlist(server_mods, installed_mods):
