@@ -38,5 +38,5 @@ curl -L $tarDownload | tar zxf - --strip-components=1 -C "$share"
 # Write the content to the desktopFile
 write_desktop_file > "$desktopFile"
 if [[ $is_steam_deck -eq 1 ]]; then
-    write_desktop_file > "$HOME/Desktop/dzgui.desktop"
+    write_desktop_file > "$HOME/Desktop/dayz_py.desktop"
 fi
