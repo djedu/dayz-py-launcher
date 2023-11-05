@@ -98,4 +98,4 @@ The other Linux DayZ launchers...
 * [dayz-ctl](https://github.com/WoozyMasta/dayz-ctl)
 * [DayZ Linux CLI Launcher](https://github.com/bastimeyer/dayz-linux-cli-launcher/)
 
-Icon/Logo (unknown author) [Website](https://www.wallpaperflare.com/dayz-video-games-minimalism-monochrome-typography-artwork-wallpaper-pjmat)
+Kuch for the Logo
