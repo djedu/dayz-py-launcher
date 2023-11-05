@@ -63,6 +63,8 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
     `sudo pacman -S tk`
 
+* May also need to install Python's "Requests" module.
+
 ### Installer
 
 Run this installer script in your terminal...
