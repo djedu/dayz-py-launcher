@@ -31,7 +31,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.4'
+version = '1.3.5'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -520,19 +520,19 @@ class App(ttk.Frame):
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
         self.show_favorites = ttk.Checkbutton(
-            self.widgets_frame, text='Only Show Favorites', variable=self.show_favorites_var, command=lambda: filter_treeview(self.show_favorites_var.get())
+            self.widgets_frame, text='Favorites', variable=self.show_favorites_var, command=lambda: filter_treeview(self.show_favorites_var.get())
         )
 
         # Show Only History Filter Checkbutton
         self.show_history_var = tk.BooleanVar()
         self.show_history = ttk.Checkbutton(
-            self.widgets_frame, text='Only Show History', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
+            self.widgets_frame, text='History', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
         )
 
         # Show Only Sponsored Filter Checkbutton
         self.show_sponsored_var = tk.BooleanVar()
         self.show_sponsored = ttk.Checkbutton(
-            self.widgets_frame, text='Only Show Sponsored', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
+            self.widgets_frame, text='Sponsored', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
         )
 
         # Clear Filters button
