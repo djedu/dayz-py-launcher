@@ -39,7 +39,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSA server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Refresh All Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
 
-* 'Show Only Sponsored' is for viewing the Sponsored listing from the DayZ Standalone Launcher.
+* 'Sponsored' checkbox is for viewing the Sponsored listing from the DayZ Standalone Launcher.
 
 * You can use the switch at the bottom right corner to toggle between light and dark mode. Or permanently set it under Settings.
 
