@@ -33,7 +33,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * DayZ requires the vm.max_map_count to be increased or else it crashes upon loading. Upon Joining a server it will check if a user's vm.max_map_count is at least 1048576. If not, prompt for sudo password in order to execute the command to increase the vm.max_map_count.
 
-* Once you join a server, it is added to your History. You can also click on a server and then hit the Checkbox 'Add/Remove Favorite'. If there's no blue check already, this will add to favorites. If it's checked, then it will remove it.
+* Once you join a server, it is added to your History. You can also click on a server and then hit the Checkbox 'Add/Remove Favorite'. If there's no blue check already, this will add to favorites. If it's checked, then it will remove it. You can remove a server from your History using the Right Click menu.
 
 * By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSA ('Refresh All Servers' button).
 
@@ -56,6 +56,8 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 ## Known Bugs
 
 * For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory.
+
+* May not be able to Paste Copied server info into all applications. [Bug Info](https://github.com/python/cpython/issues/104613)
 
 ## Installation
 
