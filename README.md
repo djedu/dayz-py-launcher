@@ -59,7 +59,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory.
 
-* May not be able to Paste Copied server info into all applications. [Bug Info](https://github.com/python/cpython/issues/104613)
+* May not be able to Paste Copied server info (from the Right Click menu) into all applications. [Bug Info](https://github.com/python/cpython/issues/104613)
 
 ## Installation
 
