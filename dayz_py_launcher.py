@@ -1568,8 +1568,9 @@ def generate_mod_treeview():
         logging.debug(debug_message)
         print(debug_message)
 
-    remove_broken_symlinks(symlink_dir)
-    create_symlinks(workshop_dir, symlink_dir)
+    if linux_os:
+        remove_broken_symlinks(symlink_dir)
+        create_symlinks(workshop_dir, symlink_dir)
 
     app.installed_mods_tv.delete(*app.installed_mods_tv.get_children())
     get_installed_mods(workshop_dir)
