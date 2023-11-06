@@ -31,7 +31,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.3.5'
+version = '1.4.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -105,13 +105,6 @@ class App(ttk.Frame):
     def MessageBoxWarn(self, message):
         messagebox.showwarning(title=self.message_title, message=message)
 
-    # To be used for copy to clipboard
-    # def copy_item(self):
-    #     selected_item = self.treeview.selection()
-    #     if selected_item:
-    #         copied_item = self.treeview.item(selected_item[0])['values']
-    #         print("Copied item:", copied_item)
-
     def OnSingleClick(self, event):
         """
         These actions are performed when the user clicks on a server/entry in the
@@ -171,6 +164,113 @@ class App(ttk.Frame):
             url = self.installed_mods_tv.item(item, 'values')[3]
 
         self.open_steam_url(url)
+
+    def rightClick_selection(self, event):
+        """
+        Selects the treeview item below the current mouse position. Gets the item
+        number and displays the context menu.
+        """
+        global rightClickItem
+        item = self.treeview.identify_row(event.y)
+        if item:
+            self.treeview.selection_set(item)
+            rightClickItem = item
+            # rightClickValues = self.treeview.item(item)['values']
+            self.treeview.context_menu.post(event.x_root, event.y_root)
+
+    def close_menu(self, event):
+        """
+        Closes the Right Click context menu when you left click anywhere outside
+        the menu.
+        """
+        if self.treeview.context_menu.winfo_exists() and event.widget != self.treeview.context_menu:
+            self.treeview.context_menu.unpost()
+
+    def copyIP(self):
+        """
+        Copies the currently selected treeview item IP address to the clipboard.
+        """
+        global rightClickItem
+        ip, _, _ = get_selected_ip(rightClickItem)
+        self.clipboard_clear()
+        self.clipboard_append(ip)
+
+    def copyName(self):
+        """
+        Copies the currently selected treeview item Server Name to the clipboard.
+        """
+        global rightClickItem
+        serverName = self.treeview.item(rightClickItem)["values"][1]
+        self.clipboard_clear()
+        self.clipboard_append(serverName)
+
+    def copyGamePort(self):
+        """
+        Copies the currently selected treeview item Game Port address to the clipboard.
+        """
+        global rightClickItem
+        _, gamePort, _ = get_selected_ip(rightClickItem)
+        self.clipboard_clear()
+        self.clipboard_append(gamePort)
+
+    def copyQueryPort(self):
+        """
+        Copies the currently selected treeview item Query Port address to the clipboard.
+        """
+        global rightClickItem
+        queryPort = self.treeview.item(rightClickItem)["values"][6]
+        self.clipboard_clear()
+        self.clipboard_append(queryPort)
+
+    def copyIP_GamePort(self):
+        """
+        Copies the currently selected treeview item IP address & Game Port to the clipboard.
+        """
+        global rightClickItem
+        ip, gamePort, _ = get_selected_ip(rightClickItem)
+        self.clipboard_clear()
+        self.clipboard_append(f'{ip}:{gamePort}')
+
+    def copyModList(self):
+        """
+        Copies the currently selected treeview item Mod List to the clipboard.
+        """
+        global rightClickItem
+        ip, _, queryPort = get_selected_ip(rightClickItem)
+        mod_dict = get_serverdb_mods(ip, queryPort)
+
+        mod_list = []
+        for mod in mod_dict.values():
+            mod_list.append(mod)
+        mod_list = sorted(mod_list, key=str.casefold)
+        mod_list_str = '\n'.join(mod_list)
+        self.clipboard_clear()
+        self.clipboard_append(mod_list_str)
+
+    def copyAllInfo(self):
+        """
+        Copies the currently selected treeview item Server Info to the clipboard.
+        """
+        global rightClickItem
+        ip, _, queryPort = get_selected_ip(rightClickItem)
+        serverInfo = json.dumps(SERVER_DB.get(f'{ip}:{queryPort}'), indent=4)
+        self.clipboard_clear()
+        self.clipboard_append(serverInfo)
+
+    def remove_selected_history(self):
+        """
+        Removes the currently selected treeview item from the History if it exist.
+        """
+        global rightClickItem
+        ip, _, qport = get_selected_ip(rightClickItem)
+
+        removed = settings['history'].pop(f'{ip}:{qport}', None)
+        if removed:
+            logInfo = f'{self.treeview.item(rightClickItem)["values"][1]} - {ip}:{qport}'
+            logMessage = f'{logInfo} - Removed from History'
+            logging.info(logMessage)
+            print(logMessage)
+            save_settings_to_json()
 
     def toggle_favorite(self):
         """
@@ -429,10 +529,21 @@ class App(ttk.Frame):
         self.treeview.pack(expand=True, fill='both')
         self.treeview.bind('<<TreeviewSelect>>', self.OnSingleClick)
         self.treeview.bind('<Double-1>', self.OnDoubleClick)
-        # Right Click
-        # self.treeview.bind("<Button-3>", lambda e: self.treeview.context_menu.post(e.x_root, e.y_root))
-        # self.treeview.context_menu = tk.Menu(self.treeview, tearoff=0)
-        # self.treeview.context_menu.add_command(label="Copy", command=self.copy_item)
+        # Right Click Menu
+        self.treeview.bind("<Button-3>", self.rightClick_selection)
+        self.treeview.context_menu = tk.Menu(self.treeview, tearoff=0, bd=4, relief='groove')
+        self.treeview.context_menu.add_command(label='Copy IP', command=self.copyIP)
+        self.treeview.context_menu.add_command(label='Copy Name', command=self.copyName)
+        self.treeview.context_menu.add_command(label='Copy Game Port', command=self.copyGamePort)
+        self.treeview.context_menu.add_command(label='Copy Query Port', command=self.copyQueryPort)
+        self.treeview.context_menu.add_command(label='Copy IP:GamePort', command=self.copyIP_GamePort)
+        self.treeview.context_menu.add_command(label='Copy Mod List', command=self.copyModList)
+        self.treeview.context_menu.add_command(label='Copy All Info', command=self.copyAllInfo)
+        self.treeview.context_menu.add_separator()
+        self.treeview.context_menu.add_command(label='Join Server', command=launch_game)
+        self.treeview.context_menu.add_separator()
+        self.treeview.context_menu.add_command(label='Remove From History', command=self.remove_selected_history)
+        root.bind('<Button-1>', self.close_menu)
 
         self.scrollbar.config(command=self.treeview.yview)
 
@@ -1688,6 +1799,13 @@ def launch_game():
     # Get IP and Ports info
     ip, port, qport = get_selected_ip(item)
 
+    # Make sure we have at least the IP and Game Port
+    if not all([ip, port]):
+        error_message = 'Unable to get IP and/or Game Port.\nServer may be down'
+        logging.error(error_message)
+        app.MessageBoxError(message=error_message)
+        return
+
     workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
     # Get list of installed mod ID from the Steam Workshop directory
     installed_mods = sorted([f.name for f in os.scandir(workshop_dir) if f.is_dir()])
@@ -2094,7 +2212,7 @@ def load_fav_history():
     # Get all IP:Qports & server 'names' from Favorites and History
     # Merge favorites and history into one dict.
     fav_history = settings.get('favorites') | settings.get('history')
-    
+
     MAX_WORKERS = settings.get('max_sim_pings')
     if MAX_WORKERS < 1:
         MAX_WORKERS = 1
