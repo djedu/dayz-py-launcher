@@ -31,7 +31,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.4.0'
+version = '1.4.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -171,12 +171,12 @@ class App(ttk.Frame):
         number and displays the context menu.
         """
         global rightClickItem
-        item = self.treeview.identify_row(event.y)
+        item = event.widget.identify_row(event.y)
         if item:
-            self.treeview.selection_set(item)
+            event.widget.selection_set(item)
             rightClickItem = item
-            # rightClickValues = self.treeview.item(item)['values']
-            self.treeview.context_menu.post(event.x_root, event.y_root)
+            # rightClickValues = event.widget.item(item)['values']
+            event.widget.context_menu.post(event.x_root, event.y_root)
 
     def close_menu(self, event):
         """
@@ -185,6 +185,9 @@ class App(ttk.Frame):
         """
         if self.treeview.context_menu.winfo_exists() and event.widget != self.treeview.context_menu:
             self.treeview.context_menu.unpost()
+
+        if self.installed_mods_tv.context_menu.winfo_exists() and event.widget != self.installed_mods_tv.context_menu:
+            self.installed_mods_tv.context_menu.unpost()
 
     def copyIP(self):
         """
@@ -469,6 +472,29 @@ class App(ttk.Frame):
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to launch Steam Mod URL.\n\n{e}'
+            logging.error(error_message)
+            print(error_message)
+            app.MessageBoxError(error_message)
+
+    def open_mod_dir(self):
+        """
+        Opens the mod directory in the file browser/explorer.
+        """
+        global rightClickItem
+        steamWorkshopId = str(self.installed_mods_tv.item(rightClickItem)["values"][2])
+        workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
+        mod_dir = os.path.join(workshop_dir, steamWorkshopId)
+
+        if linux_os:
+            open_cmd = ['xdg-open', mod_dir]
+        elif windows_os:
+            open_cmd = ['explorer', mod_dir]
+
+        try:
+            subprocess.Popen(open_cmd)
+        except subprocess.CalledProcessError as e:
+            error_message = f'Failed to open mod directory.\n\n{e}'
+            logging.error(error_message)
             print(error_message)
             app.MessageBoxError(error_message)
 
@@ -764,6 +790,10 @@ class App(ttk.Frame):
 
         self.installed_mods_tv.pack(expand=True, fill='both')
         self.installed_mods_tv.bind('<Double-1>', self.OnDoubleClick)
+        # Right Click Menu
+        self.installed_mods_tv.bind("<Button-3>", self.rightClick_selection)
+        self.installed_mods_tv.context_menu = tk.Menu(self.installed_mods_tv, tearoff=0, bd=4, relief='groove')
+        self.installed_mods_tv.context_menu.add_command(label='Open Mod Directory', command=self.open_mod_dir)
 
         self.mod_scrollbar.config(command=self.installed_mods_tv.yview)
 
