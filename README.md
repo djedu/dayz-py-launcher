@@ -95,9 +95,9 @@ You can also run the same script in the Installer section above.
 
 DayZ Standalone Launcher (DZSA) for their API. [Website](https://dayzsalauncher.com/)
 
-rdbende for the [theme](https://github.com/rdbende/Azure-ttk-theme/tree/gif-based/)
+rdbende for the [Theme](https://github.com/rdbende/Azure-ttk-theme/tree/gif-based/) |  [License](https://github.com/rdbende/Azure-ttk-theme/blob/gif-based/LICENSE)
 
-Yepoleb for the server query Python modules. [a2s](https://github.com/Yepoleb/python-a2s) & [dayzquery](https://github.com/Yepoleb/dayzquery)
+Yepoleb for the server query Python modules. [a2s](https://github.com/Yepoleb/python-a2s) | [License](https://github.com/Yepoleb/python-a2s/blob/master/LICENSE) & [dayzquery](https://github.com/Yepoleb/dayzquery) | [License](https://github.com/Yepoleb/dayzquery/blob/master/LICENSE)
 
 The other Linux DayZ launchers...
 * [DZGUI](https://github.com/aclist/dztui)
