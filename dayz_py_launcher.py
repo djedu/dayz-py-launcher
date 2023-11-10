@@ -2471,7 +2471,7 @@ def detect_install_directories():
                 save_settings_to_json()
 
     else:
-        error_message('Unable to detect DayZ & Workshop directories')
+        error_message = 'Unable to detect DayZ & Workshop directories'
         logging.error(error_message)
         print(error_message)
 
