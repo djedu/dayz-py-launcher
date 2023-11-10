@@ -19,7 +19,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from threading import Event, Thread
 from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
-from vdf2json import vdf2json
 
 
 # Get the absolute path of the directory containing DayZ Py Launcher
@@ -31,7 +30,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.4.1'
+version = '1.5.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 steam_cmd = 'steam'
@@ -129,8 +128,8 @@ class App(ttk.Frame):
                     f'Name:    {server_db_info.get("name")}\n\n'
                     f'Server OS:   {"Windows" if server_db_info.get("environment") == "w" else "Linux":<25}'
                     f'DayZ Version:   {server_db_info.get("version"):<25}'
-                    f'Password Protected:   {bool_to_yes_no(server_db_info.get("password")):<25}'
-                    f'VAC Enabled:   {bool_to_yes_no(server_db_info.get("vac")):<25}'
+                    f'Password Protected:   {bool_to_yes_no(server_db_info.get("password")):<20}'
+                    f'VAC Enabled:   {bool_to_yes_no(server_db_info.get("vac")):<20}'
                     f'Shard:   {server_db_info.get("shard").title()}\n\n'
                     f'BattlEye:   {bool_to_yes_no(server_db_info.get("battlEye")):<35}'
                     f'First Person Only:   {bool_to_yes_no(server_db_info.get("firstPersonOnly")):<24}'
@@ -482,8 +481,8 @@ class App(ttk.Frame):
         """
         global rightClickItem
         steamWorkshopId = str(self.installed_mods_tv.item(rightClickItem)["values"][2])
-        workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
-        mod_dir = os.path.join(workshop_dir, steamWorkshopId)
+        workshop_dir = os.path.join(settings.get('steam_dir'), 'content', app_id)
+        mod_dir = os.path.realpath(os.path.join(workshop_dir, steamWorkshopId))
 
         if linux_os:
             open_cmd = ['xdg-open', mod_dir]
@@ -553,6 +552,7 @@ class App(ttk.Frame):
                                   treeview_sort_column(self.treeview, _col, False))
 
         self.treeview.pack(expand=True, fill='both')
+        self.treeview.bind('<Control-a>', lambda e: self.treeview.selection_add(self.treeview.get_children()))
         self.treeview.bind('<<TreeviewSelect>>', self.OnSingleClick)
         self.treeview.bind('<Double-1>', self.OnDoubleClick)
         # Right Click Menu
@@ -1424,8 +1424,9 @@ def refresh_servers():
     # server_pings is the function that each thread will run.
     # app.treeview.get_children() is a list/tuple of all the Treeview Item numbers
     # treeview_list is the tuple values for each Treeview item.
-    thread = Thread(target=thread_pool, args=(server_pings, app.treeview.get_children(), treeview_list), daemon=True)
-    thread.start()
+    if linux_os:
+        thread = Thread(target=thread_pool, args=(server_pings, app.treeview.get_children(), treeview_list), daemon=True)
+        thread.start()
 
 
 def thread_pool(server_pings, treeview_children, treeview_list):
@@ -1464,7 +1465,6 @@ def thread_pool(server_pings, treeview_children, treeview_list):
         print(error_message)
 
 
-# TODO Build function for handling v1 Query
 def refresh_selected():
     """
     For the currently selected server in the 'Server List' tab_1, directly query
@@ -2384,11 +2384,30 @@ def change_theme():
         root.tk.call('set_theme', 'dark')
 
 
+def parse_vdf(data, target_app_id):
+    path = None
+    apps_section = False
+
+    for line in data:
+        line = line.strip()
+
+        if line.startswith('"path"'):
+            path = line.split('"')[3]
+        elif line == '"apps"':
+            apps_section = True
+        elif line.startswith("}"):
+            apps_section = False
+        elif apps_section and line.startswith(f'"{target_app_id}"'):
+            return path
+
+    return None
+
+
 def detect_install_directories():
     """
     Fairly basic attempt at automatically detecting and settings the users DayZ
-    and Steam Workshop mod directories. Uses the vdf2json module to parse Steam's
-    vdf file which stores the workshop folders for each game.
+    and Steam Workshop mod directories. Parses Steam's vdf file which stores the
+    workshop folders for each game.
     """
     # Set default directories for Linux
     if linux_os:
@@ -2410,8 +2429,29 @@ def detect_install_directories():
 
     # Set default directories for Windows
     elif windows_os:
-        default_steam_dir = 'C:\\Program Files (x86)\\Steam'
+        import winreg
+        architecture = platform.architecture()[0]
+
+        if '64bit' in architecture:
+            steam_key = r'SOFTWARE\Wow6432Node\Valve\Steam'
+        else:
+            steam_key = r'SOFTWARE\Valve\Steam'
+
+        try:
+            hklm_steam = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, steam_key)
+            default_steam_dir = winreg.QueryValueEx(hklm_steam, "InstallPath")[0]
+        except FileNotFoundError as e:
+            error_message = f'Steam Reg Install Path not found: {e}'
+            logging.error(error_message)
+            print(error_message)
+            default_steam_dir = r'C:\Program Files (x86)\Steam'
+
         vdfDir = f'{default_steam_dir}\\config\\'
+        logging.debug(f'Steam libraryfolders directory set to: {vdfDir}')
+
+    else:
+        print('Unsupported OS. Skipping Install Check...')
+        return
 
     # Use Steam's 'libraryfolders.vdf' to find DayZ and Steam Workshop directories
     # Idea from https://github.com/aclist/dztui
@@ -2419,30 +2459,21 @@ def detect_install_directories():
 
     if (settings.get('dayz_dir') == '' or not os.path.exists(settings.get('dayz_dir'))) and os.path.isfile(vdfFile):
 
-        with open(vdfFile, 'r') as file:
-            steam_json = json.loads(vdf2json(file))
+        path = None
+        with open(vdfFile, 'r') as vdfData:
+            path = parse_vdf(vdfData, app_id)
 
-        for entry in steam_json.get('libraryfolders').values():
-            # print(entry)
-            if app_id in entry.get('apps'):
-                path = entry.get('path')
-                # print(path)
-
-                settings['dayz_dir'] = os.path.join(path, 'steamapps/common/DayZ')
-                settings['steam_dir'] = os.path.join(path, f'steamapps/workshop')
+            if path:
+                settings['dayz_dir'] = os.path.join(path, 'steamapps', 'common', 'DayZ')
+                settings['steam_dir'] = os.path.join(path, 'steamapps', 'workshop')
                 logging.debug(f'Setting DayZ directory as: {settings["dayz_dir"]}')
                 logging.debug(f'Setting Steam directory as: {settings["steam_dir"]}')
+                save_settings_to_json()
 
     else:
-        logging.error('Unable to detect DayZ & Workshop directories')
-
-    # if not os.path.exists(os.path.join(settings.get('dayz_dir'), '!dayz_py')):
-    #     os.makedirs(os.path.join(settings.get('dayz_dir'), '!dayz_py'))
-
-    # profile = settings.get('profile_name')
-    # game_dir = settings.get('dayz_dir')
-    # workshop_dir = settings.get('steam_dir')
-    # steam_custom_params = settings.get('launch_params')
+        error_message('Unable to detect DayZ & Workshop directories')
+        logging.error(error_message)
+        print(error_message)
 
 
 def apply_windows_gui_fixes():
@@ -2556,7 +2587,7 @@ def app_updater():
         ask_message = 'Update Available. Would you like to install it now?'
         answer = app.MessageBoxAskYN(message=ask_message)
         print('Update App:', answer)
-        if answer:
+        if answer and linux_os:
             install_update()
 
 
