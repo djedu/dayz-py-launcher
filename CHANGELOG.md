@@ -1,4 +1,18 @@
 # Changelog
+## 1.5.0 (2023-11-09)
+### Added
+* Read Windows Registry to get Steam Install directory on Windows.
+* Ability to "Select All" servers in the "Server List" using CTRL+A
+
+### Changed
+* Only ping servers during "Refresh All Servers" on Linux
+* Only install updates on Linux
+* New method for parsing Steam's libraryfolders.vdf
+* Spacing in the Server Info label
+
+### Fixed
+* Missing license for modules/libraries
+* Opening Mod directories on Windows
 
 ## 1.4.1 (2023-11-06)
 ### Added
