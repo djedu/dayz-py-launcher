@@ -13,10 +13,12 @@
 ### Fixed
 * Missing license for modules/libraries
 * Opening Mod directories on Windows
+#
 
 ## 1.4.1 (2023-11-06)
 ### Added
 * Right click context menu for Installed Mods. Allows you to open the Mod directory in a file browser/explorer.
+#
 
 ## 1.4.0 (2023-11-06)
 ### Added
