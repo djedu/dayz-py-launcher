@@ -1,7 +1,7 @@
 # Changelog
 ## 1.5.0 (2023-11-09)
 ### Added
-* Read Windows Registry to get Steam Install directory on Windows.
+* Read Registry Keys to get Steam Install directory on Windows.
 * Ability to "Select All" servers in the "Server List" using CTRL+A
 
 ### Changed
