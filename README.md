@@ -2,7 +2,7 @@
 
 This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Would like to eventually make it work on Windows.
 
-This uses DayZ Standalone Launcher's (DZSA) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
+This uses DayZ Standalone Launcher's (DZSAL) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
 
 Tkinter theme used was created by rdbende (Azure-ttk-theme)
 
@@ -35,9 +35,9 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * Once you join a server, it is added to your History. You can also click on a server and then hit the Checkbox 'Add/Remove Favorite'. If there's no blue check already, this will add to favorites. If it's checked, then it will remove it. You can remove a server from your History using the Right Click menu.
 
-* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSA ('Refresh All Servers' button).
+* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSAL ('Refresh All Servers' button).
 
-* Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSA server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Refresh All Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
+* Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSAL server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Refresh All Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
 
 * Double clicking on a mod under "Installed Mods" will open the Steam Workshop page. Right Clicking will give you the option to open the mod directory in a file browser/explorer.
 
@@ -93,7 +93,7 @@ You can also run the same script in the Installer section above.
 
 ## Special Thanks
 
-DayZ Standalone Launcher (DZSA) for their API. [Website](https://dayzsalauncher.com/)
+DayZ Standalone Launcher (DZSAL) for their API. [Website](https://dayzsalauncher.com/)
 
 rdbende for the [Theme](https://github.com/rdbende/Azure-ttk-theme/tree/gif-based/) |  [License](https://github.com/rdbende/Azure-ttk-theme/blob/gif-based/LICENSE)
 
