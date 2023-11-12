@@ -1,4 +1,8 @@
 # Changelog
+### Upcoming...
+* Ability to Join a Server on Windows
+* Organize Symlinks for both Linux and Windows. Check of collisions in symlink names
+
 ## 1.5.0 (2023-11-09)
 ### Added
 * Read Registry Keys to get Steam Install directory on Windows.
