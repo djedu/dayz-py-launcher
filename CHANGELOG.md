@@ -1,7 +1,14 @@
 # Changelog
-### Upcoming...
+## 1.6.0 (2023-11-15)
+### Added
 * Ability to Join a Server on Windows
-* Organize Symlinks for both Linux and Windows. Check of collisions in symlink names
+
+### Changed
+* Organize Symlinks for both Linux and Windows. Check of collisions in symlink names. Symlinks are now in a subdirectory inside the DayZ install directory. On Linux this will be "_py" and Windows will be "_pyw"
+
+### Fixed
+* Previous commit in issue #1 caused a new issue if the user selected the wrong Workshop directory. Mod Directory was then created in the wrong location. Now just alert the user to verify settings or wait for Steam to create the directory if it doesn't exist upon first Mod install.
+* Using tkinters' built in askdirectory() would save directories with forward slashes on Windows, which would later result in subprocess commands with directories as parameters being interpreted as command switches.
 
 ## 1.5.0 (2023-11-09)
 ### Added
