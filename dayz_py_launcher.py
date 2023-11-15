@@ -29,7 +29,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.5.0'
+version = '1.6.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -1067,12 +1067,12 @@ class SettingsMenu:
         Used to Prompt user for selecting DayZ and Steam install
         directories. Set "normalized" directory to prevent issues
         when running Windows commands through subprocess. Ran into
-        instances where Windows would interperate directories with
+        instances where Windows would interpret directories with
         forward slashes as command switches.
         """
         global settings
         directory = filedialog.askdirectory()
-        debug_message = f'User choose directory: {directory}'
+        debug_message = f'User chose directory: {directory}'
         logging.debug(debug_message)
         print(debug_message)
 
