@@ -16,9 +16,9 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 ## Current Features / How to use
 
-* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf' (similar to the process used in DZGUI). If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
+* Upon opening the app, if no Steam or DayZ install directory is selected, it will try checking the default Steam install location for the 'libraryfolders.vdf'. If not automatically detected, you will need to find and set them under settings. See above screenshot as an example. **See known bugs below about theme issues and selecting install directories.
 
-* Click the 'Refresh All Servers' button to download and browse DayZ Standalone Launcher's API server list.
+* Click the 'Download Servers' button to download and browse DayZ Standalone Launcher's API server list.
 
 * Click the 'Refresh Selected' button to query the currently selected/highlighted server and pull the latest info (like Player count, Gametime, Ping, Mods)
 
@@ -35,9 +35,9 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * Once you join a server, it is added to your History. You can also click on a server and then hit the Checkbox 'Add/Remove Favorite'. If there's no blue check already, this will add to favorites. If it's checked, then it will remove it. You can remove a server from your History using the Right Click menu.
 
-* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSAL ('Refresh All Servers' button).
+* By default, when you open DayZ Py Launcher, it will load your History and Favorites and queries the servers directly using a2s and dayzquery. So, if you don't need to find a new server, then you shouldn't even need to download the entire list from DZSAL ('Download Servers' button).
 
-* Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSAL server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Refresh All Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
+* Enabling 'Filter on Keypress' will cause the Server List to immeditately update on every letter/number/backspace entered into the filter entry box. If you don't limit the number of Servers to display under the settings, this can cause some lag due to the size of the DZSAL server list. I have found that limiting it down to 2,000 - 2,500 will list most servers that actually have active players. But, if you happen to download the server list ('Download Servers') while a server is rebooting (so 0 active players), then that server could possibly get cut out of the list.
 
 * Double clicking on a mod under "Installed Mods" will open the Steam Workshop page. Right Clicking will give you the option to open the mod directory in a file browser/explorer.
 
@@ -49,17 +49,17 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 
 * Current default is to ping/query 20 servers at a time when loading the Server List. The lower you set it, the longer it will take to populate the Pings listed for each server. Turning it too high may cause you performance issues. If a server fails to repsond to a ping, it's ping will be listed at '999'.
 
-## Not working / Known limitations
+## Not working / Possible limitations
 
 * Joining a server that is password protected (Need special handling?)
 * Flatpak may not work since it's untested.
-* Windows - Unable to join servers.
+* Auto install mods
 
 ## Known Bugs
 
 * For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory. [Bug Info](https://github.com/rdbende/Sun-Valley-ttk-theme/issues/104)
 
-* The GUI stutters/hangs during loading and especially on Windows when draging the app around and also when pinging servers after the 'Refresh All Servers'. [Bug Info](https://github.com/rdbende/Azure-ttk-theme/issues/11)
+* The GUI stutters/hangs during loading and especially on Windows when draging the app around and also when pinging servers after the 'Download Servers'. [Bug Info](https://github.com/rdbende/Azure-ttk-theme/issues/11)
 
 * May not be able to Paste Copied server info (from the Right Click menu) into all applications. [Bug Info](https://github.com/python/cpython/issues/104613)
 
