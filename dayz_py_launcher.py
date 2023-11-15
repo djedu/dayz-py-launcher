@@ -1,5 +1,4 @@
 import a2s
-import ctypes
 import hashlib
 import json
 import logging
@@ -33,8 +32,9 @@ appName = 'DayZ Py Launcher'
 version = '1.5.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
-steam_cmd = 'steam'
+gameExecutable = 'steam'
 app_id = '221100'
+sym_folder = '_py'
 settings_json = os.path.join(app_directory, 'dayz_py.json')
 
 # Used for checking/downloading updates
@@ -62,8 +62,9 @@ settings = {
     'history': {}
 }
 
-SERVER_DB = {}
-MOD_DB = {}
+serverDict = {}
+modDict = {}
+hashDict = {}
 
 hidden_items = set()
 
@@ -108,18 +109,18 @@ class App(ttk.Frame):
         """
         These actions are performed when the user clicks on a server/entry in the
         Server List Treeview. Gets IP and Port info from treeview entry. Queries
-        the SERVER_DB for the info to compare server mods vs locally installed mods.
+        the serverDict for the info to compare server mods vs locally installed mods.
         Then generates the Server Mod Treeview and Info on Tab 2 ('Server Info')
         """
         if self.treeview.selection():
 
-            ip, _, qport = get_selected_ip(self.treeview.selection()[0])
+            ip, _, queryPort = get_selected_ip(self.treeview.selection()[0])
 
-            self.check_favorites(ip, qport)
+            self.check_favorites(ip, queryPort)
 
-            server_db_info = SERVER_DB.get(f'{ip}:{qport}')
+            server_db_info = serverDict.get(f'{ip}:{queryPort}')
 
-            last_joined = self.check_history(ip, qport)
+            last_joined = self.check_history(ip, queryPort)
             # Since we are manually inserting servers into the DB (i.e. Favorites and History)
             # that may be down or unable to get all of the server info, skip the following in
             # that scenario
@@ -161,6 +162,9 @@ class App(ttk.Frame):
         elif widget == self.installed_mods_tv and self.installed_mods_tv.selection():
             item = self.installed_mods_tv.selection()[0]
             url = self.installed_mods_tv.item(item, 'values')[3]
+
+        else:
+            return
 
         self.open_steam_url(url)
 
@@ -239,7 +243,7 @@ class App(ttk.Frame):
         """
         global rightClickItem
         ip, _, queryPort = get_selected_ip(rightClickItem)
-        mod_dict = get_serverdb_mods(ip, queryPort)
+        mod_dict = get_serverDict_mods(ip, queryPort)
 
         mod_list = []
         for mod in mod_dict.values():
@@ -255,7 +259,7 @@ class App(ttk.Frame):
         """
         global rightClickItem
         ip, _, queryPort = get_selected_ip(rightClickItem)
-        serverInfo = json.dumps(SERVER_DB.get(f'{ip}:{queryPort}'), indent=4)
+        serverInfo = json.dumps(serverDict.get(f'{ip}:{queryPort}'), indent=4)
         self.clipboard_clear()
         self.clipboard_append(serverInfo)
 
@@ -264,11 +268,11 @@ class App(ttk.Frame):
         Removes the currently selected treeview item from the History if it exist.
         """
         global rightClickItem
-        ip, _, qport = get_selected_ip(rightClickItem)
+        ip, _, queryPort = get_selected_ip(rightClickItem)
 
-        removed = settings['history'].pop(f'{ip}:{qport}', None)
+        removed = settings['history'].pop(f'{ip}:{queryPort}', None)
         if removed:
-            logInfo = f'{self.treeview.item(rightClickItem)["values"][1]} - {ip}:{qport}'
+            logInfo = f'{self.treeview.item(rightClickItem)["values"][1]} - {ip}:{queryPort}'
             logMessage = f'{logInfo} - Removed from History'
             logging.info(logMessage)
             print(logMessage)
@@ -282,22 +286,22 @@ class App(ttk.Frame):
         fav_state = self.favorite_var.get()
 
         if self.treeview.selection():
-            ip, _, qport = get_selected_ip(self.treeview.selection()[0])
-            server_db_info = SERVER_DB.get(f'{ip}:{qport}')
-            logInfo = f'{server_db_info.get("name")} - {ip}:{qport}'
+            ip, _, queryPort = get_selected_ip(self.treeview.selection()[0])
+            server_db_info = serverDict.get(f'{ip}:{queryPort}')
+            logInfo = f'{server_db_info.get("name")} - {ip}:{queryPort}'
 
             if fav_state:
                 logMessage = f'{logInfo} - Added to Favorites'
                 logging.info(logMessage)
                 print(logMessage)
 
-                settings['favorites'][f'{ip}:{qport}'] = {'name': server_db_info.get('name')}
+                settings['favorites'][f'{ip}:{queryPort}'] = {'name': server_db_info.get('name')}
             else:
                 logMessage = f'{logInfo} - Removed from Favorites'
                 logging.info(logMessage)
                 print(logMessage)
 
-                settings['favorites'].pop(f'{ip}:{qport}', None)
+                settings['favorites'].pop(f'{ip}:{queryPort}', None)
                 filter_treeview()
             save_settings_to_json()
 
@@ -311,39 +315,39 @@ class App(ttk.Frame):
             self.favorite_var.set(value=False)
             self.MessageBoxError(message=error_message)
 
-    def check_favorites(self, ip, qport):
+    def check_favorites(self, ip, queryPort):
         """
         Check if the currently selected treeview item is a favorite. If so,
         set the 'Add/Remove Favorite' checkbox appropriately.
         """
-        if f'{ip}:{qport}' not in settings.get('favorites'):
+        if f'{ip}:{queryPort}' not in settings.get('favorites'):
             self.favorite_var.set(value=False)
         else:
             self.favorite_var.set(value=True)
 
-    def add_history(self, ip, qport):
+    def add_history(self, ip, queryPort):
         """
         Adds server to the History stored in the users dayz_py.json upon joining
         the server. Updates the timestamp if the history already exist.
         """
-        settings['history'][f'{ip}:{qport}'] = {
-            'name': SERVER_DB.get(f'{ip}:{qport}').get('name'),
+        settings['history'][f'{ip}:{queryPort}'] = {
+            'name': serverDict.get(f'{ip}:{queryPort}').get('name'),
             'last_joined': str(datetime.now().astimezone())
         }
-        logInfo = f'{SERVER_DB.get(f"{ip}:{qport}").get("name")} - {ip}:{qport}'
+        logInfo = f'{serverDict.get(f"{ip}:{queryPort}").get("name")} - {ip}:{queryPort}'
         logMessage = f'{logInfo} - Added to History'
         save_settings_to_json()
 
-    def check_history(self, ip, qport):
+    def check_history(self, ip, queryPort):
         """
         Checks if the curently selected treeview item is in the History. If so,
         get the timestamp. Then format and return. Example format '2023-10-10 @ 14:09'.
         This is currently displayed as the Last Joined under the Server Info tab.
         """
         last_joined = 'Unknown'
-        if f'{ip}:{qport}' in settings.get('history'):
-            timestamp = settings.get('history').get(f'{ip}:{qport}').get('last_joined')
-            dt_timestamp = datetime.strptime(settings.get('history').get(f'{ip}:{qport}').get('last_joined'), '%Y-%m-%d %H:%M:%S.%f%z')
+        if f'{ip}:{queryPort}' in settings.get('history'):
+            timestamp = settings.get('history').get(f'{ip}:{queryPort}').get('last_joined')
+            dt_timestamp = datetime.strptime(settings.get('history').get(f'{ip}:{queryPort}').get('last_joined'), '%Y-%m-%d %H:%M:%S.%f%z')
             last_joined = dt_timestamp.strftime('%Y-%m-%d @ %H:%M')
 
         return last_joined
@@ -481,8 +485,8 @@ class App(ttk.Frame):
         """
         global rightClickItem
         steamWorkshopId = str(self.installed_mods_tv.item(rightClickItem)["values"][2])
-        workshop_dir = os.path.join(settings.get('steam_dir'), 'content', app_id)
-        mod_dir = os.path.realpath(os.path.join(workshop_dir, steamWorkshopId))
+        dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
+        mod_dir = os.path.realpath(os.path.join(dayzWorkshop, steamWorkshopId))
 
         if linux_os:
             open_cmd = ['xdg-open', mod_dir]
@@ -493,6 +497,28 @@ class App(ttk.Frame):
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open mod directory.\n\n{e}'
+            logging.error(error_message)
+            print(error_message)
+            app.MessageBoxError(error_message)
+
+    def open_sym_dir(self):
+        """
+        Opens file browser/explorer and select/hightlight the symlink.
+        """
+        global rightClickItem
+        symlink = str(self.installed_mods_tv.item(rightClickItem)["values"][0])
+        symlink_dir = os.path.join(settings.get('dayz_dir'), sym_folder)
+        win_symlink = os.path.normpath(os.path.join(symlink_dir, symlink))
+
+        if linux_os:
+            open_cmd = ['xdg-open', symlink_dir]
+        elif windows_os:
+            open_cmd = ['explorer', '/select,', win_symlink]
+
+        try:
+            subprocess.Popen(open_cmd)
+        except subprocess.CalledProcessError as e:
+            error_message = f'Failed to open symlink directory.\n\n{e}'
             logging.error(error_message)
             print(error_message)
             app.MessageBoxError(error_message)
@@ -536,7 +562,7 @@ class App(ttk.Frame):
             ('NoBorder.treearea', {'sticky': 'nswe'})
         ])
 
-        cols = ('Map', 'Name', 'Players', 'Max', 'Gametime', 'IP:Port', 'Qport', 'Ping')
+        cols = ('Map', 'Name', 'Players', 'Max', 'Gametime', 'IP:GamePort', 'QueryPort', 'Ping')
         # Server List Treeview
         self.treeview = ttk.Treeview(
             self.tab_1,
@@ -575,17 +601,17 @@ class App(ttk.Frame):
 
         # Treeview columns - Set default width
         self.treeview.column('Map', width=110)
-        self.treeview.column('Name', width=460)
+        self.treeview.column('Name', width=445)
         self.treeview.column('Players', width=60)
         self.treeview.column('Max', width=45)
         self.treeview.column('Gametime', width=75)
-        self.treeview.column('IP:Port', width=135)
-        self.treeview.column('Qport', width=50)
+        self.treeview.column('IP:GamePort', width=135)
+        self.treeview.column('QueryPort', width=65)
         self.treeview.column('Ping', width=50)
 
-        # Refresh All Servers Accentbutton
+        # Download Servers Accentbutton
         self.refresh_all_button = ttk.Button(
-            self.widgets_frame, text='Refresh All Servers', style='Accent.TButton', command=refresh_servers
+            self.widgets_frame, text='Download Servers', style='Accent.TButton', command=refresh_servers
         )
 
         # Refresh Selected server Accentbutton
@@ -794,14 +820,15 @@ class App(ttk.Frame):
         self.installed_mods_tv.bind("<Button-3>", self.rightClick_selection)
         self.installed_mods_tv.context_menu = tk.Menu(self.installed_mods_tv, tearoff=0, bd=4, relief='groove')
         self.installed_mods_tv.context_menu.add_command(label='Open Mod Directory', command=self.open_mod_dir)
+        self.installed_mods_tv.context_menu.add_command(label='Open Symlink Directory', command=self.open_sym_dir)
 
         self.mod_scrollbar.config(command=self.installed_mods_tv.yview)
 
         # # Installed Mods Treeview columns
-        self.installed_mods_tv.column('Symlink', width=65)
-        self.installed_mods_tv.column('Name', width=200)
+        self.installed_mods_tv.column('Symlink', width=50)
+        self.installed_mods_tv.column('Name', width=240)
         self.installed_mods_tv.column('Workshop ID', width=100)
-        self.installed_mods_tv.column('Steam Workshop / Download URL', width=350)
+        self.installed_mods_tv.column('Steam Workshop / Download URL', width=325)
         self.installed_mods_tv.column('Size (MBs)', width=75)
 
         # Refresh Mods Accentbutton
@@ -1038,14 +1065,26 @@ class SettingsMenu:
     def select_dir(self, var):
         """
         Used to Prompt user for selecting DayZ and Steam install
-        directories
+        directories. Set "normalized" directory to prevent issues
+        when running Windows commands through subprocess. Ran into
+        instances where Windows would interperate directories with
+        forward slashes as command switches.
         """
         global settings
         directory = filedialog.askdirectory()
-        print(directory)
+        debug_message = f'User choose directory: {directory}'
+        logging.debug(debug_message)
+        print(debug_message)
+
         if (directory and os.path.exists(directory)) or directory == '':
-            var.set(directory)
-            settings[str(var)] = directory
+            normalized = os.path.normpath(directory)
+            var.set(normalized)
+            settings[str(var)] = normalized
+
+            debug_message = f'Normalized directory: {normalized}'
+            logging.debug(debug_message)
+            print(debug_message)
+
             save_settings_to_json()
         elif directory != ():
             error_message = 'Warning: The selected directory does not exist.'
@@ -1083,17 +1122,19 @@ class SettingsMenu:
     def on_install_change(self):
         """
         Save users settings whenever they change their Steam install type.
-        Update steam_cmd to corresponding steam/flatpak command.
+        Update gameExecutable to corresponding steam/flatpak command.
         """
-        global settings, steam_cmd
+        global settings, gameExecutable
         install_type = self.install_var.get()
         print(install_type)
         settings['install_type'] = install_type
-        if 'flatpak' in install_type:
-            steam_cmd = 'flatpak run com.valvesoftware.Steam'
-        else:
-            steam_cmd = 'steam'
-        print(steam_cmd)
+        if linux_os:
+            if 'flatpak' in install_type:
+                gameExecutable = 'flatpak run com.valvesoftware.Steam'
+            else:
+                gameExecutable = 'steam'
+
+        print(gameExecutable)
         save_settings_to_json()
 
     def on_theme_change(self):
@@ -1149,11 +1190,10 @@ def save_settings_to_json():
         json.dump(settings, json_file, indent=4)
 
 
-def load_settings_from_file():
+def load_settings_from_file(settings):
     """
     Load settings to json configuation file. Alert user if corrupted.
     """
-    global settings
     if os.path.exists(settings_json):
         with open(settings_json, 'r') as json_file:
             try:
@@ -1177,11 +1217,11 @@ def server_pings(id, server_info):
     it's ping/response time.
     """
     ip = server_info[5].split(':')[0]
-    qport = server_info[6]
+    queryPort = server_info[6]
     ping = get_ping_cmd(ip)
 
     if not ping:
-        ping, _ = a2s_query(ip, qport)
+        ping, _ = a2s_query(ip, queryPort)
     app.treeview.item(id, text='', values=server_info + (ping,))
 
 
@@ -1195,7 +1235,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Gets values from Version combobox
     filter_version = app.version_combobox.get()
     # Gets values from Mods Entry box
-    mods_text = app.mod_entry.get()
+    filter_mods = app.mod_entry.get()
 
     # Clear Server Info tab
     app.server_info_text.set('')
@@ -1203,6 +1243,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
 
     # Unselect previously clicked treeview item
     app.treeview.selection_set([])
+    app.favorite_var.set(value=False)
 
     # Reset previous filters. If turned on, treeview is reset after every
     # filter update. Without it, you can 'stack' filters and search within
@@ -1227,9 +1268,9 @@ def filter_treeview(chkbox_not_toggled: bool=True):
         version_selected = True
 
     mods_entered = False
-    if mods_text != '' and mods_text != app.default_mod_text:
+    if filter_mods != '' and filter_mods != app.default_mod_text:
         # Convert user entered comma separated string/text to list
-        mods_list = [x.strip() for x in mods_text.split(',')]
+        mods_list = [x.strip() for x in filter_mods.split(',')]
         mods_entered = True
 
     # Gets values from Only Show Favorites checkbox
@@ -1249,31 +1290,34 @@ def filter_treeview(chkbox_not_toggled: bool=True):
             server_name = server_values[1]
             ip = server_values[5].split(':')[0]
             ip_port = server_values[5]
-            qport = server_values[6]
+            queryPort = server_values[6]
             # str_values = str(server_values)
-            if text_entered and filter_text.lower() not in server_name.lower() and filter_text not in ip_port:
+            if text_entered and filter_text.startswith('!'):
+                if filter_text.lower()[1:] in server_name.lower() or filter_text[1:] in ip_port:
+                    hide_treeview_item(item_id)
+            elif text_entered and filter_text.lower() not in server_name.lower() and filter_text not in ip_port:
                 hide_treeview_item(item_id)
 
             if map_selected and filter_map.lower() not in map_name.lower():
                 hide_treeview_item(item_id)
 
-            if version_selected and filter_version.lower() not in SERVER_DB[f'{ip}:{qport}'].get('version'):
+            if version_selected and filter_version.lower() not in serverDict[f'{ip}:{queryPort}'].get('version'):
                 hide_treeview_item(item_id)
 
             if mods_entered:
-                # Generate list of mods from server info in SERVER_DB
-                mod_names = [mod['name'] for mod in SERVER_DB[f'{ip}:{qport}'].get('mods')]
+                # Generate list of mods from server info in serverDict
+                mod_names = [mod['name'] for mod in serverDict[f'{ip}:{queryPort}'].get('mods')]
                 # Make sure ALL mods user entered have a match in the server's mod list (case insensitive).
-                if not all(any(ele.lower() in mod.lower() for mod in mod_names) for ele in mods_list):
+                if not all(any(elem.lower() in mod.lower() for mod in mod_names) for elem in mods_list):
                     hide_treeview_item(item_id)
 
-            if show_favorites and not settings.get('favorites').get(f'{ip}:{qport}'):
+            if show_favorites and not settings.get('favorites').get(f'{ip}:{queryPort}'):
                 hide_treeview_item(item_id)
 
-            if show_history and not settings.get('history').get(f'{ip}:{qport}'):
+            if show_history and not settings.get('history').get(f'{ip}:{queryPort}'):
                 hide_treeview_item(item_id)
 
-            if show_sponsored and not SERVER_DB[f'{ip}:{qport}'].get('sponsor'):
+            if show_sponsored and not serverDict[f'{ip}:{queryPort}'].get('sponsor'):
                 hide_treeview_item(item_id)
 
 
@@ -1302,16 +1346,16 @@ def restore_treeview():
 
 def generate_server_db(servers):
     """
-    Generate the SERVER_DB from the DZSA API. Also, adds each map
+    Generate the serverDict from the DZSA API. Also, adds each map
     to the dayz_maps list which is used to populate the Map combobox
     """
     for server in servers:
         ip = server.get("endpoint").get("ip")
-        qport = server.get("endpoint").get("port")
-        server_map = server.get('map').title()
+        queryPort = server.get("endpoint").get("port")
+        server_map = server.get('map').title() if server.get('map').lower() != 'pnw' else 'PNW'
         dayz_version = server.get('version')
 
-        SERVER_DB[f'{ip}:{qport}'] = {
+        serverDict[f'{ip}:{queryPort}'] = {
             'sponsor': server.get('sponsor'),
             'profile': server.get('profile'),
             'nameOverride': server.get('nameOverride'),
@@ -1319,7 +1363,7 @@ def generate_server_db(servers):
             'game': server.get('game'),
             "endpoint": {
                 "ip": ip,
-                "port": qport
+                "port": queryPort
             },
             'name': server.get('name'),
             'map': server_map,
@@ -1358,7 +1402,7 @@ def generate_server_db(servers):
 def refresh_servers():
     """
     This downloads the Server List from DayZ Standalone launcher API.
-    Only ran when user clicks the Refresh All Servers button.
+    Only ran when user clicks the Download Servers button.
     """
     # Disable buttons while Querying the API and Treeview Populates
     for button in app.button_list:
@@ -1405,7 +1449,7 @@ def refresh_servers():
     # highest populated servers. From testing, the API tends to return over 10,000
     # servers, but only about 2,500 tend to have players on them. Putting a limit
     # could also cause a server that just rebooted to be excluded/hidden from the
-    # Treeview Server List. And another 'Refresh All Servers' would need to be
+    # Treeview Server List. And another 'Download Servers' would need to be
     # performed once the server had time to regain it's population.'
     MAX_TREEVIEW_LENGTH = settings.get('max_servers_display')
     print(f'Max Servers to Display: {MAX_TREEVIEW_LENGTH}')
@@ -1424,7 +1468,7 @@ def refresh_servers():
     # server_pings is the function that each thread will run.
     # app.treeview.get_children() is a list/tuple of all the Treeview Item numbers
     # treeview_list is the tuple values for each Treeview item.
-    if linux_os:
+    if any([linux_os, windows_os]):
         thread = Thread(target=thread_pool, args=(server_pings, app.treeview.get_children(), treeview_list), daemon=True)
         thread.start()
 
@@ -1476,12 +1520,12 @@ def refresh_selected():
         item_values = app.treeview.item(id, 'values')
 
         ip, port = item_values[5].split(':')
-        qport = item_values[6]
+        queryPort = item_values[6]
 
-        ping, _ = a2s_query(ip, qport)
-        a2s_mods(ip, qport)
+        ping, _ = a2s_query(ip, queryPort)
+        a2s_mods(ip, queryPort)
 
-        server_dict = SERVER_DB[f'{ip}:{qport}']
+        server_dict = serverDict[f'{ip}:{queryPort}']
         # Since we are manually inserting servers into the DB (i.e. Favorites and History)
         # that may be down or unable to get all of the server info, skip the following in
         # that scenario
@@ -1493,63 +1537,156 @@ def refresh_selected():
             app.OnSingleClick('')
 
 
-def encode(id):
+def mod_meta_info(metaFile):
     """
-    Gets the first 8 characters of the md5 hashed mod id. Used for symlink name.
-    Unsure if there's a specific need for the encoding, or why not just use the
-    mod name like the Official DayZ Launcher. Other Linux based DayZ Launchers
-    were using the same/similar method. So, just following suite to prevent
-    running into unforeseen issues.
+    Reads the mods meta.cpp file to get/return the
+    mod's name and workshop ID.
     """
-    encoded_id = hashlib.md5(f'{id}\n'.encode('utf-8')).hexdigest()[:8]
-    # print(encoded_id)
-    return encoded_id
+    with open(metaFile) as f:
+        contents = f.read()
+
+        lines = contents.strip().split('\n')
+
+        for line in lines:
+            if 'name' in line:
+                key, value = map(str.strip, line.split('='))
+                name = value[1:-2]
+            if 'publishedid' in line:
+                key, value = map(str.strip, line.split('='))
+                id = value[:-1]
+
+    return name, id
+
+
+def is_junction(path):
+    """
+    Used to check if a link/path is a Junction in Windows. Junctions don't appear
+    to be supported in os.path.islink or is_symlink. Python only supports junctions
+    starting with Python 3.12    
+    """
+    if windows_os:
+        attributesW = ctypes.windll.kernel32.GetFileAttributesW(path)
+        return (attributesW != -1) and (attributesW & 0x400) == 0x400
+        
+
+def start_steam():
+    """
+    Start Steam on Windows.
+    """
+    open_cmd = ['cmd', '/c', 'start', 'steam:']
+
+    try:
+        subprocess.Popen(open_cmd)
+        time.sleep(5)
+    except subprocess.CalledProcessError as e:
+        error_message = f'Failed to launch Steam.\n\n{e}'
+        logging.error(error_message)
+        print(error_message)
+        app.MessageBoxError(error_message)
 
 
 def remove_broken_symlinks(symlink_dir):
     """
-    Removes symlinks to mods that have been uninstalled
+    Removes old symlinks created by earlier version of the app.
+    Removes symlinks to mods that have been uninstalled.
+    Generate the hashDict which stores the mod ID, name and first 5
+    characters of the sha1 hash of the mod ID (can be more than 5 characters
+    if a collision is detected with another mod). In this function, it will
+    just store the symlink name minus the @ which is the sha1[:5] generated
+    when the symlink was originally created.
+    
+    is_symlink() does not support Windows Junctions. Use the is_junction 
+    function on Windows. Also, is_dir() doesn't properly work on Windows, so 
+    we use os.path.isdir().
+    
+    Sample dict format - modID: {'name': mod_name, 'hash': sha1[:5]}
     """
-    with os.scandir(symlink_dir) as entries:
-        # print(entries)
+    # Remove old symlinks
+    with os.scandir(settings.get('dayz_dir')) as entries:
         for entry in entries:
-            # print(entry)
-            if entry.name.startswith('@') and entry.is_symlink() and not entry.is_dir():
-                logging.debug(f'Removing broken symlink: {entry.name}')
+            # Remove broken symlinks
+            if entry.name.startswith('@'):
+                logging.debug(f'Removing old symlink: {entry.name}')
+                print(f'Removing old symlink: {entry.name}')
                 os.unlink(entry.path)
+                
+    with os.scandir(symlink_dir) as entries:
+        for entry in entries:
+            if entry.name.startswith('@') and (entry.is_symlink() or is_junction(entry.path)) and not os.path.isdir(entry.path):
+                logging.debug(f'Removing broken symlink: {entry.name}')
+                print(f'Removing broken symlink: {entry.name}')
+                os.unlink(entry.path)
+            elif entry.name.startswith('@') and (entry.is_symlink() or is_junction(entry.path)) and os.path.isdir(entry.path):
+                # mod_path = os.path.join(directory, folder_name)
+                meta_path = os.path.join(entry, 'meta.cpp')
+                if os.path.isfile(meta_path):
+                    name, id = mod_meta_info(meta_path)
+                    hashDict[id] = {'name': name, 'hash': entry.name[1:]}
 
 
-def create_symlinks(workshop_dir, symlink_dir):
+def create_symlinks(directory, symlink_dir):
     """
     Creates symlinks to mods that have been installed from the Steam
-    Workshop. Seems to be an issue with DayZ loading mods from Linux
-    directories, so the symlinks are created in the DayZ install
-    directory.
+    Workshop. Generates/updates the hashDict which will be used to
+    load the mods and to prevent collisions since shorting the length
+    of the stored hash and moving the symlinks to a subdirectory.
+    This is due to the current bug/limitation in the Linux Steam client
+    https://github.com/ValveSoftware/steam-for-linux/issues/5753.
+    Moved the symlinks to a subdirectory to keep things more organized
+    and to prevent clutter in the DayZ game directory.
+    
+    Windows requires elevated privileges to create symlinks. So, instead,
+    we use Junctions. islink() does not support Windows Junctions. Use the 
+    is_junction function on Windows.
     """
-    mods = [f.name for f in os.scandir(workshop_dir) if f.is_dir()]
-    for mod in mods:
-        mod_path = os.path.join(workshop_dir, mod)
+    # Get a sorted list of folder names
+    #folder_names = [f.name for f in os.scandir(directory) if f.is_dir()]
+    folder_names = [f.name for f in os.scandir(directory) if f.is_dir() and os.path.isfile(os.path.join(f.path, 'meta.cpp'))]
+    # print(f'First Hash Dict: {json.dumps(hashDict, indent=4)}')
+    for folder_name in folder_names:
+        # seen_hashes = [mod['hash'] for mod in hashDict.values()]
+        # print(f'{seen_hashes=}')
+        mod_path = os.path.join(directory, folder_name)
         meta_path = os.path.join(mod_path, 'meta.cpp')
-        with open(meta_path) as f:
-            contents = f.read()
 
-            lines = contents.strip().split('\n')
+        name, id = mod_meta_info(meta_path)
 
-            for line in lines:
-                if 'name' in line:
-                    key, value = map(str.strip, line.split('='))
-                    name = value[1:-2]
-                if 'publishedid' in line:
-                    key, value = map(str.strip, line.split('='))
-                    id = value[:-1]
+        if not hashDict.get(id):
 
-        symlink = os.path.join(symlink_dir, f'@{encode(id)}')
+            # Calculate the SHA-1 hash for the mod id
+            original_hash = hashlib.sha1(id.encode()).hexdigest()
 
-        if not os.path.islink(symlink) and not os.path.exists(symlink):
-            logging.debug(f'Creating Symlink for: {name} - {symlink}')
-            os.symlink(mod_path, symlink)
-        # else:
-            # print(f'Mod Already Symlinked: {name}')
+            hash_length = 5  # Start with a minimum hash length
+
+            while hash_length <= 40:
+                # Get the hash using the current length
+                current_hash = original_hash[:hash_length]
+
+                symlink = os.path.join(symlink_dir, f'@{current_hash}')
+
+                # Create symlink if it doesn't exist
+                if (not os.path.islink(symlink) or not is_junction(symlink)) and not os.path.exists(symlink):
+                    debug_message = f'Creating Symlink for: {name} - {symlink}'
+                    logging.debug(debug_message)
+                    print(debug_message)
+                    hashDict[id] = {'name': name, 'hash': current_hash}
+                    if linux_os:
+                        os.symlink(mod_path, symlink)
+                    if windows_os:
+                        subprocess.Popen(f'mklink /J "{symlink}" "{mod_path}"', shell=True)
+                    break
+
+                # Check for collision
+                elif current_hash in [mod['hash'] for mod in hashDict.values()]:
+                    print(f"Collision found for hash prefix {current_hash} with mod '{name}' and '{id}'. Increasing hash length.")
+                    hash_length += 1
+
+                else:
+                    # Log if no contitions met.
+                    error_message = f'Possible issues creating Symlink for: {name} - {symlink}'
+                    logging.error(error_message)
+                    print(error_message)
+                    break
 
 
 def format_server_list_dzsa(servers):
@@ -1562,17 +1699,17 @@ def format_server_list_dzsa(servers):
     treeview_list = []
     server_count = len(servers)
     for server in servers:
-        map_name = server.get('map').title()
+        map_name = server.get('map').title() if server.get('map').lower() != 'pnw' else 'PNW'
         name = server.get('name')
         players = server.get('players')
         max_players = server.get('maxPlayers')
         ip = server.get('endpoint').get('ip')
-        qport = server.get('endpoint').get('port')
+        queryPort = server.get('endpoint').get('port')
         port = server.get('gamePort')
         ip_port = f'{ip}:{port}'
         time = server.get('time')
 
-        server_info = (map_name, name, players, max_players, time, ip_port, qport)
+        server_info = (map_name, name, players, max_players, time, ip_port, queryPort)
 
         if server_count > 1 and server_info not in treeview_list:
             treeview_list.append(server_info)
@@ -1586,7 +1723,7 @@ def get_mod_name(file):
     """
     Opens the file passed, in this case the Steam Mod meta.cpp file, which
     contains the mod info. Used to get the Name of the Mod when generating
-    the MOD_DB
+    the modDict
     """
     contents = file.read()
     lines = contents.strip().split('\n')
@@ -1601,18 +1738,18 @@ def get_mod_name(file):
 def get_installed_mods(directory):
     """
     Loops through all the folders in the Steam Workshop directory to
-    generate the MOD_DB which stores all the locally installed mod's
+    generate the modDict which stores all the locally installed mod's
     Steam Workshop ID, Mod Name and the size of the mod. Also, gets the
     total size of the Mod directory and is displayed on the right side
     of Tab 3 (Installed Mods)
     """
-    global MOD_DB
+    global modDict
     # Loop through all items in the directory. Add to list if dir and name of dir begins with @. Sort the list and ignore case
     # symlinks = [f.name for f in os.scandir(directory) if f.is_dir() and f.name.startswith('@')]
-    MOD_DB = {f.name: {} for f in os.scandir(directory) if f.is_dir()}
+    modDict = {f.name: {} for f in os.scandir(directory) if f.is_dir() and os.path.isfile(os.path.join(f.path, 'meta.cpp'))}
     total_size = 0
 
-    for mod in MOD_DB.keys():
+    for mod in modDict.keys():
         mod_path = os.path.join(f'{directory}/{mod}')
         # print(mod_path)
         mod_size = 0
@@ -1629,15 +1766,15 @@ def get_installed_mods(directory):
         # print(mod_size)
 
         total_size += mod_size
-        MOD_DB[mod] = {
+        modDict[mod] = {
             'name': mod_name,
             'size': f'{round(mod_size / (1024 ** 2), 2):,}',  # Size in MBs
             # 'size': round(mod_size / (1024 ** 2), 2),
             'url': f'{workshop_url}{mod}'
         }
 
-    # MOD_DB['total_size'] = round(total_size / (1024 ** 3), 2)
-    # MOD_DB['total_size'] = total_size # Size in bytes
+    # modDict['total_size'] = round(total_size / (1024 ** 3), 2)
+    # modDict['total_size'] = total_size # Size in bytes
 
     # Convert to GB or MB based on the size
     if total_size >= 1024**3:  # If size is >= 1 GB
@@ -1646,7 +1783,7 @@ def get_installed_mods(directory):
         total_size = f'{round(total_size / (1024**2), 2)} MBs'
 
     app.total_size_var.set(f'Total Size of Installed Mods\n{total_size}')
-    # print(json.dumps(MOD_DB, indent=4))
+    # print(json.dumps(modDict, indent=4))
 
 
 def refresh_server_mod_info():
@@ -1675,8 +1812,8 @@ def generate_server_mod_treeview(server_info):
     for mod in server_info.get('mods'):
         # print(mod)
         workshop_id = mod.get('steamWorkshopId')
-        # print(MOD_DB)
-        if MOD_DB.get(str(workshop_id)):
+        # print(modDict)
+        if modDict.get(str(workshop_id)):
             status = 'Installed'
             tag = ''
         else:
@@ -1699,26 +1836,35 @@ def generate_mod_treeview():
     Checks for broken symlinks, removes if necessary. Creates symlinks
     for installed mods.
     """
-    workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
-    symlink_dir = settings.get('dayz_dir')
+    dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
+    symlink_dir = os.path.join(settings.get('dayz_dir'), sym_folder)
 
-    # Check if workshop_dir exists, if not create it
-    if not os.path.exists(workshop_dir):
-        os.makedirs(workshop_dir)
-        debug_message = f"Workshop Directory created: {workshop_dir}"
+    # Check if dayzWorkshop exists, if not log and return
+    if not os.path.exists(dayzWorkshop):
+        debug_message = f"Either wrong directory set for Steam Workshop or no mods installed."
+        logging.debug(debug_message)
+        print(debug_message)
+        app.MessageBoxInfo(debug_message)
+        return
+
+    # Check if symlink_dir exists, if not create it
+    if not os.path.exists(symlink_dir):
+        os.makedirs(symlink_dir)
+        debug_message = f"Symlink Directory created: {symlink_dir}"
         logging.debug(debug_message)
         print(debug_message)
 
-    if linux_os:
+    if any([linux_os, windows_os]):
         remove_broken_symlinks(symlink_dir)
-        create_symlinks(workshop_dir, symlink_dir)
+        create_symlinks(dayzWorkshop, symlink_dir)
 
     app.installed_mods_tv.delete(*app.installed_mods_tv.get_children())
-    get_installed_mods(workshop_dir)
+    get_installed_mods(dayzWorkshop)
 
-    for mod, info in MOD_DB.items():
+    for mod, info in modDict.items():
         app.installed_mods_tv.insert('', tk.END, values=(
-            f'@{encode(mod)}',
+            # f'@{encode(mod)}',
+            f'@{hashDict.get(mod).get("hash")}',
             info.get('name'),
             mod,
             info.get('url'),
@@ -1748,15 +1894,15 @@ def generate_mod_param_list(server_mods):
     Generates the ';' separated mod directory/symlink list that is
     appended to the Launch Command
     """
-    encoded_mod_list = []
+    mod_symlink_list = []
     # Loop through the server mods IDs and append encoded ID to list. This encoded ID
     # is the same one used to create the symlink and is used in the DayZ launch parameters
     # to tell it where to locate the installed mod.
     for id in server_mods.keys():
-        encoded_mod_list.append(f'@{encode(id)}')
+        mod_symlink_list.append(f'{sym_folder}/@{hashDict.get(str(id)).get("hash")}')
 
     # Convert the encoded mod list into a string. Each mod is separted by ';'.
-    mod_str_list = ';'.join(encoded_mod_list)
+    mod_str_list = ';'.join(mod_symlink_list)
     # Command has to be in a list when passed to subprocess.
     mod_params = [f'"-mod={mod_str_list}"']
 
@@ -1774,9 +1920,9 @@ def get_selected_ip(item):
     item_values = app.treeview.item(item, 'values')
 
     ip, port = item_values[5].split(':')
-    qport = item_values[6]
+    queryPort = item_values[6]
 
-    return ip, port, qport
+    return ip, port, queryPort
 
 
 def launch_game():
@@ -1786,6 +1932,7 @@ def launch_game():
     # Check if 'Profile Name' is blank. If so, alert user. Some servers will
     # kick you for using the default 'Survivor' profile name. So, I'm leaving
     # the default blank in order to force the user to set one.
+    global gameExecutable
     if not settings.get('profile_name'):
         error_message = 'No Profile Name is currently set.\nCheck the Settings tab, then try again.'
         logging.error(error_message)
@@ -1807,6 +1954,8 @@ def launch_game():
             logging.error(error_message)
             app.MessageBoxError(message=error_message)
             return
+        elif answer and windows_os:
+            start_steam()
 
     dayz_running = check_dayz_process()
     debug_message = f'DayZ Running: {dayz_running}'
@@ -1827,7 +1976,7 @@ def launch_game():
     # Get currently selected treeview item/server
     item = app.treeview.selection()[0]
     # Get IP and Ports info
-    ip, port, qport = get_selected_ip(item)
+    ip, port, queryPort = get_selected_ip(item)
 
     # Make sure we have at least the IP and Game Port
     if not all([ip, port]):
@@ -1836,22 +1985,28 @@ def launch_game():
         app.MessageBoxError(message=error_message)
         return
 
-    workshop_dir = os.path.join(settings.get('steam_dir'), f'content/{app_id}')
-    # Get list of installed mod ID from the Steam Workshop directory
-    installed_mods = sorted([f.name for f in os.scandir(workshop_dir) if f.is_dir()])
+    dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
+    # Get list of installed mod ID from the Steam Workshop directory. Handle case where either
+    # no mods installed or wrong mod directory is configured. This could be a valid scenario
+    # in the event the user has no mods and plays on an unmodded server.
+    installed_mods = []
+    if os.path.exists(dayzWorkshop):
+        installed_mods = sorted([f.name for f in os.scandir(dayzWorkshop) if f.is_dir() and os.path.isfile(os.path.join(f.path, 'meta.cpp'))])
+    else:
+        installed_mods = []
 
     # Query the server directly for current mods.
-    server_mods = a2s_mods(ip, qport)
+    server_mods = a2s_mods(ip, queryPort)
 
     # If failed to get mods directly from the server, fail over to using the mods
-    # previously stored in the SERVER_DB
+    # previously stored in the serverDict
     if server_mods:
         missing_mods = compare_modlist(server_mods, installed_mods)
     else:
-        warn_message = f'Failed getting mods directly from server ({ip}, {qport}. Using existing SERVER_DB mod list.)'
+        warn_message = f'Failed getting mods directly from server ({ip}, {queryPort}. Using existing serverDict mod list.)'
         logging.warning(warn_message)
         print(warn_message)
-        missing_mods = compare_modlist(get_serverdb_mods(ip, qport), installed_mods)
+        missing_mods = compare_modlist(get_serverDict_mods(ip, queryPort), installed_mods)
 
     # Alert user that mods are missing
     if missing_mods:
@@ -1863,16 +2018,32 @@ def launch_game():
 
     # Create the list of commands/parameters that will be passed to subprocess to load the game with mods
     # required by the server along with any additional parameters input by the user
-    default_params = [
-        steam_cmd,
-        '-applaunch',
-        app_id,
-        f'-connect={ip}:{port}',
-        f'-name={settings.get("profile_name")}',
-        '-nolauncher',
-        '-nosplash',
-        '-skipintro',
-    ]
+    if linux_os:
+        default_params = [
+            gameExecutable,
+            '-applaunch',
+            app_id,
+            f'-connect={ip}:{port}',
+            f'-name={settings.get("profile_name")}',
+            '-nolauncher',
+            '-nosplash',
+            '-skipintro',
+        ]
+    elif windows_os:
+        default_params = [
+                gameExecutable,
+                '0',
+                '1',
+                '1',
+                '-exe',
+                'DayZ_x64.exe',
+                f'-connect={ip}',
+                f'-port={port}',
+                f'-name={settings.get("profile_name")}',
+                '-nolauncher',
+                '-nosplash',
+                '-skipintro',
+            ]
 
     launch_cmd = default_params
     logging.debug(f'Initial launch_cmd: {launch_cmd}')
@@ -1903,7 +2074,10 @@ def launch_game():
     print(debug_message)
 
     try:
-        subprocess.Popen(launch_cmd)
+        if linux_os:
+            subprocess.Popen(launch_cmd)
+        elif windows_os:
+            subprocess.Popen(str_command)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         error_message = f'Failed to launch DayZ.\n\n{e}'
         logging.error(error_message)
@@ -1911,7 +2085,7 @@ def launch_game():
         app.MessageBoxError(error_message)
 
     # Add server to user's History'
-    app.add_history(ip, qport)
+    app.add_history(ip, queryPort)
 
 
 def check_steam_process():
@@ -2005,21 +2179,21 @@ def check_max_map_count():
         return False
 
 
-def a2s_query(ip, qport, update: bool=True):
+def a2s_query(ip, queryPort, update: bool=True):
     """
     Use the a2s module to query the server 'info' directly using the server's
-    IP and Query Port (separte from the game port). Update the SERVER_DB with
+    IP and Query Port (separte from the game port). Update the serverDict with
     latest info and get the ping response time.
 
-    If this is an 'update' to an existing SERVER_DB entry, then only update the
+    If this is an 'update' to an existing serverDict entry, then only update the
     dict else, create the entry (like when loading favorites and history from
     user's settings/config)
 
     Source: https://github.com/Yepoleb/python-a2s
     """
     try:
-        # print(ip, port, qport)
-        info = a2s.info((ip, int(qport)))
+        # print(ip, port, queryPort)
+        info = a2s.info((ip, int(queryPort)))
         # print(info)
         if 'etm' in info.keywords:
             timeAcceleration = int(info.keywords.split('etm')[1].split('.')[0])
@@ -2042,37 +2216,44 @@ def a2s_query(ip, qport, update: bool=True):
             'firstPersonOnly': True if 'no3rd' in info.keywords else False,
             'endpoint': {
                 'ip': ip,
-                'port': int(qport)
+                'port': int(queryPort)
             },
         }
 
         if update:
-            SERVER_DB[f'{ip}:{qport}'].update(server_update)
+            serverDict[f'{ip}:{queryPort}'].update(server_update)
         else:
-            SERVER_DB[f'{ip}:{qport}'] = (server_update)
-            SERVER_DB[f'{ip}:{qport}']['name'] = info.server_name
-            SERVER_DB[f'{ip}:{qport}']['mods'] = []
+            serverDict[f'{ip}:{queryPort}'] = (server_update)
+            serverDict[f'{ip}:{queryPort}']['name'] = info.server_name
+            serverDict[f'{ip}:{queryPort}']['mods'] = []
 
         # Convert ping from seconds to milliseconds
         ping = round(info.ping * 1000)
 
     except TimeoutError:
-        debug_message = f'Timed out getting info/ping from Server {ip} using Qport {qport}'
+        debug_message = f'Timed out getting info/ping from Server {ip} using QueryPort {queryPort}'
         logging.debug(debug_message)
         print(debug_message)
         ping = 999
         info = None
+    except OSError as osError:
+        # This error is raised on Windows if the server IP is 0.0.0.0
+        error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
+        logging.error(error_message)
+        print(debug_message)
+        ping = 999
+        info = None
     except IndexError as ie:
-        error_message = f'IndexError from Server {ip} using Qport {qport} - Info: {info} - {ie}'
+        error_message = f'IndexError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ie}'
         logging.error(error_message)
         print(info)
         ping = 999
         info = None
     except KeyError as ke:
-        error_message = f'KeyError from Server {ip} using Qport {qport} - Info: {info} - {ke}'
+        error_message = f'KeyError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ke}'
         logging.error(error_message)
         print(info)
-        print(ip, qport)
+        print(ip, queryPort)
         ping = 999
         info = None
         print(json.dumps(server_update, indent=4))
@@ -2080,10 +2261,10 @@ def a2s_query(ip, qport, update: bool=True):
     return ping, info
 
 
-def a2s_mods(ip, qport):
+def a2s_mods(ip, queryPort):
     """
     Queries the server directly to get the mods it's currently running.
-    Updates the SERVER_DB in the DZSA format (List of Dictionaries).
+    Updates the serverDict in the DZSA format (List of Dictionaries).
     [{
         "name": "Community Framework",
         "steamWorkshopId": 1559212036
@@ -2095,13 +2276,13 @@ def a2s_mods(ip, qport):
     Source: https://github.com/Yepoleb/dayzquery
     """
     try:
-        # print(ip, port, qport)
-        mods = dayzquery.dayz_rules((ip, int(qport))).mods
+        # print(ip, port, queryPort)
+        mods = dayzquery.dayz_rules((ip, int(queryPort))).mods
         mods_dict = {}
         server_mod_list = []
 
-        api_mod_list = SERVER_DB[f'{ip}:{qport}']['mods']
-        # print(json.dumps(SERVER_DB[f'{ip}:{qport}']['mods'], indent=4))
+        api_mod_list = serverDict[f'{ip}:{queryPort}']['mods']
+        # print(json.dumps(serverDict[f'{ip}:{queryPort}']['mods'], indent=4))
 
         for mod in mods:
             # print(mod)
@@ -2110,10 +2291,10 @@ def a2s_mods(ip, qport):
 
         # api_mod_list = update_mod_list(api_mod_list, server_mod_list)
         # print(json.dumps(mods_dict, indent=4))    w
-        SERVER_DB[f'{ip}:{qport}']['mods'] = update_mod_list(api_mod_list, server_mod_list)
+        serverDict[f'{ip}:{queryPort}']['mods'] = update_mod_list(api_mod_list, server_mod_list)
 
     except TimeoutError:
-        debug_message = f'Timed out getting mods from Server {ip} using Qport {qport}'
+        debug_message = f'Timed out getting mods from Server {ip} using QueryPort {queryPort}'
         logging.debug(debug_message)
         print(debug_message)
         mods_dict = None
@@ -2235,11 +2416,11 @@ def get_dzsa_data(url):
 def load_fav_history():
     """
     This will parse the saved settings json, directly query each server and
-    add them to the Server List treeview and SERVER_DB when the app starts.
+    add them to the Server List treeview and serverDict when the app starts.
     Allows you to use the app without the need of downloading all the servers
     from DZSA if you don't need them.
     """
-    # Get all IP:Qports & server 'names' from Favorites and History
+    # Get all IP:QueryPorts & server 'names' from Favorites and History
     # Merge favorites and history into one dict.
     fav_history = settings.get('favorites') | settings.get('history')
 
@@ -2252,23 +2433,23 @@ def load_fav_history():
         # Create a list to store the futures
         futures = []
         for server, values in fav_history.items():
-            ip, qport = server.split(':')
+            ip, queryPort = server.split(':')
 
             # Submit the a2s_query function to the thread pool and store the future
             # Specify 'False' for the update argument in order to trigger an insert
-            # into the SERVER_DB instead of an update. Also, creates necessary keys
-            # in the SERVER_DB for future query updates
-            future = executor.submit(a2s_query, ip, qport, False)
+            # into the serverDict instead of an update. Also, creates necessary keys
+            # in the serverDict for future query updates
+            future = executor.submit(a2s_query, ip, queryPort, False)
             futures.append((future, server, values))
 
     # Wait for all futures to complete
     for future, server, values in futures:
-        ip, qport = server.split(':')
+        ip, queryPort = server.split(':')
         stored_name = values.get('name')
         ping, info = future.result()
         if info:
-            a2s_mods(ip, qport)
-            server_map = info.map_name.title()
+            a2s_mods(ip, queryPort)
+            server_map = info.map_name.title() if info.map_name.lower() != 'pnw' else 'PNW'
             server_name = info.server_name
             players = info.player_count
             maxPlayers = info.max_players
@@ -2276,7 +2457,7 @@ def load_fav_history():
             time = info.keywords[-5:]
             dayz_version = info.version
 
-            treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', qport, ping)
+            treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', queryPort, ping)
             app.treeview.insert('', tk.END, values=treeview_values)
 
             # Generate Map list for Filter Combobox
@@ -2289,9 +2470,9 @@ def load_fav_history():
 
         else:
             # If the server is down or unreachable, just insert info stored in favorites/history
-            treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', qport, '')
+            treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', queryPort, '')
             app.treeview.insert('', tk.END, values=treeview_values)
-            SERVER_DB[f'{ip}:{qport}'] = {'name': stored_name, 'mods': []}
+            serverDict[f'{ip}:{queryPort}'] = {'name': stored_name, 'mods': []}
 
     # Sort and set values for the dayzmap list ignoring case
     app.dayz_maps = sorted(app.dayz_maps)
@@ -2302,14 +2483,14 @@ def load_fav_history():
     app.version_combobox['values'] = app.dayz_versions
 
 
-def get_serverdb_mods(ip, qport):
+def get_serverDict_mods(ip, queryPort):
     """
-    Returns Dictionary from the SERVER_DB of all mods where the key
+    Returns Dictionary from the serverDict of all mods where the key
     is the Steam workshop ID and the value is the name of the mod.
     { "1559212036": "Community Framework" }
     """
     mods_dict = {}
-    for mod in SERVER_DB[f'{ip}:{qport}']['mods']:
+    for mod in serverDict[f'{ip}:{queryPort}']['mods']:
         mods_dict[mod.get('steamWorkshopId')] = mod.get('name')
 
     return mods_dict
@@ -2431,6 +2612,7 @@ def detect_install_directories():
     elif windows_os:
         import winreg
         architecture = platform.architecture()[0]
+        logging.debug(f'Architecture: {architecture}')
 
         if '64bit' in architecture:
             steam_key = r'SOFTWARE\Wow6432Node\Valve\Steam'
@@ -2597,16 +2779,14 @@ if __name__ == '__main__':
     check_platform()
 
     # Load Launcher Settings
-    load_settings_from_file()
+    load_settings_from_file(settings)
 
-    if settings.get('install_type') == 'flatpak':
-        steam_cmd = 'flatpak run com.valvesoftware.Steam'
+    if linux_os and settings.get('install_type') == 'flatpak':
+        gameExecutable = 'flatpak run com.valvesoftware.Steam'
 
     root = tk.Tk()
     root.title('DayZ Py Launcher')
 
-    # Icon Source:
-    # https://www.wallpaperflare.com/dayz-video-games-minimalism-monochrome-typography-artwork-wallpaper-pjmat
     iconFile = os.path.join(app_directory, 'dayz_icon.png')
     img = PhotoImage(file=iconFile)
 
@@ -2614,7 +2794,10 @@ if __name__ == '__main__':
         detect_install_directories()
 
     if windows_os:
+        import ctypes
         apply_windows_gui_fixes()
+        sym_folder = '_pyw'
+        gameExecutable = f'{os.path.join(settings.get("dayz_dir"), "DayZ_BE.exe")}'
 
     root.iconphoto(True, img)
 
@@ -2631,14 +2814,14 @@ if __name__ == '__main__':
     root.geometry('1280x625')
 
     # Warn user if not running on linux_os:
-    if not linux_os:
+    if not linux_os and not windows_os:
         warn_message = 'Unsupported Operating Sytem.'
         print(warn_message)
         app.MessageBoxWarn(message=warn_message)
 
     # Generate Installed Mods treeview if DayZ directory in settings
     if settings.get('dayz_dir') != '':
-        generate_mod_treeview()
+        app.after(100, generate_mod_treeview)
 
     # Load Favorites and History on Startup unless disabled by user
     if settings.get('load_favs_on_startup'):
