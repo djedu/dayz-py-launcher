@@ -1,6 +1,6 @@
 # DayZ Py Launcher
 
-This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Would like to eventually make it work on Windows.
+This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**.
 
 This uses DayZ Standalone Launcher's (DZSAL) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
 
@@ -54,6 +54,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 * Joining a server that is password protected (Need special handling?)
 * Flatpak may not work since it's untested.
 * Auto install mods
+* Manual Direct Connect to a server. If you're comfortable with editing the config file (dayz_py.json), you can add or edit an existing Favorite/History entry and make sure you use the QueryPort and not the GamePort.  Then re-open the launcher. It should now show up in your list.
 
 ## Known Bugs
 
