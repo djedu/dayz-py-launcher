@@ -2650,7 +2650,7 @@ def detect_install_directories():
                 settings['steam_dir'] = os.path.join(path, 'steamapps', 'workshop')
                 logging.debug(f'Setting DayZ directory as: {settings["dayz_dir"]}')
                 logging.debug(f'Setting Steam directory as: {settings["steam_dir"]}')
-                save_settings_to_json()
+                # save_settings_to_json()
 
     else:
         error_message = 'Unable to detect DayZ & Workshop directories'
