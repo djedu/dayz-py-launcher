@@ -1,6 +1,6 @@
 # DayZ Py Launcher
 
-This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**.
+This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Also, works with Windows, but the existing launchers on Windows work far better when it comes to installing mods.
 
 This uses DayZ Standalone Launcher's (DZSAL) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
 
