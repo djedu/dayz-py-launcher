@@ -52,8 +52,11 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 ## Not working / Possible limitations
 
 * Joining a server that is password protected (Need special handling?)
+
 * Flatpak may not work since it's untested.
+
 * Auto install mods
+
 * Manual Direct Connect to a server. If you're comfortable with editing the config file (dayz_py.json), you can add or edit an existing Favorite/History entry and make sure you use the QueryPort and not the GamePort.  Then re-open the launcher. It should now show up in your list.
 
 ## Known Bugs
