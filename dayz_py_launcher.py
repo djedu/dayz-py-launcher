@@ -118,27 +118,27 @@ class App(ttk.Frame):
 
             self.check_favorites(ip, queryPort)
 
-            server_db_info = serverDict.get(f'{ip}:{queryPort}')
+            serverDict_info = serverDict.get(f'{ip}:{queryPort}')
 
             last_joined = self.check_history(ip, queryPort)
             # Since we are manually inserting servers into the DB (i.e. Favorites and History)
             # that may be down or unable to get all of the server info, skip the following in
             # that scenario
-            if server_db_info.get('environment'):
+            if serverDict_info.get('environment'):
                 self.server_info_text.set(
-                    f'Name:    {server_db_info.get("name")}\n\n'
-                    f'Server OS:   {"Windows" if server_db_info.get("environment") == "w" else "Linux":<25}'
-                    f'DayZ Version:   {server_db_info.get("version"):<25}'
-                    f'Password Protected:   {bool_to_yes_no(server_db_info.get("password")):<20}'
-                    f'VAC Enabled:   {bool_to_yes_no(server_db_info.get("vac")):<20}'
-                    f'Shard:   {server_db_info.get("shard").title()}\n\n'
-                    f'BattlEye:   {bool_to_yes_no(server_db_info.get("battlEye")):<35}'
-                    f'First Person Only:   {bool_to_yes_no(server_db_info.get("firstPersonOnly")):<24}'
-                    f'Time Acceleration:   {server_db_info.get("timeAcceleration")}{"x":<28}'
+                    f'Name:    {serverDict_info.get("name")}\n\n'
+                    f'Server OS:   {"Windows" if serverDict_info.get("environment") == "w" else "Linux":<25}'
+                    f'DayZ Version:   {serverDict_info.get("version"):<25}'
+                    f'Password Protected:   {bool_to_yes_no(serverDict_info.get("password")):<20}'
+                    f'VAC Enabled:   {bool_to_yes_no(serverDict_info.get("vac")):<20}'
+                    f'Shard:   {serverDict_info.get("shard").title()}\n\n'
+                    f'BattlEye:   {bool_to_yes_no(serverDict_info.get("battlEye")):<35}'
+                    f'First Person Only:   {bool_to_yes_no(serverDict_info.get("firstPersonOnly")):<24}'
+                    f'Time Acceleration:   {serverDict_info.get("timeAcceleration")}{"x":<28}'
                     f'Last Joined:   {last_joined:<25}'
                 )
 
-                generate_server_mod_treeview(server_db_info)
+                generate_server_mod_treeview(serverDict_info)
 
                 treeview_sort_column(self.server_mods_tv, 'Status', True)
             else:
@@ -154,7 +154,6 @@ class App(ttk.Frame):
         item. This allows the user to easily subscribe to missing mods.
         """
         widget = event.widget
-
         if widget == self.server_mods_tv and self.server_mods_tv.selection():
             item = self.server_mods_tv.selection()[0]
             url = self.server_mods_tv.item(item, 'values')[2]
@@ -162,9 +161,6 @@ class App(ttk.Frame):
         elif widget == self.installed_mods_tv and self.installed_mods_tv.selection():
             item = self.installed_mods_tv.selection()[0]
             url = self.installed_mods_tv.item(item, 'values')[3]
-
-        else:
-            return
 
         self.open_steam_url(url)
 
@@ -174,10 +170,9 @@ class App(ttk.Frame):
         number and displays the context menu.
         """
         global rightClickItem
-        item = event.widget.identify_row(event.y)
-        if item:
-            event.widget.selection_set(item)
-            rightClickItem = item
+        rightClickItem = event.widget.identify_row(event.y)
+        if rightClickItem:
+            event.widget.selection_set(rightClickItem)
             # rightClickValues = event.widget.item(item)['values']
             event.widget.context_menu.post(event.x_root, event.y_root)
 
@@ -186,11 +181,14 @@ class App(ttk.Frame):
         Closes the Right Click context menu when you left click anywhere outside
         the menu.
         """
-        if self.treeview.context_menu.winfo_exists() and event.widget != self.treeview.context_menu:
-            self.treeview.context_menu.unpost()
-
-        if self.installed_mods_tv.context_menu.winfo_exists() and event.widget != self.installed_mods_tv.context_menu:
-            self.installed_mods_tv.context_menu.unpost()
+        context_menus = (
+            self.treeview.context_menu,
+            self.server_mods_tv.context_menu,
+            self.installed_mods_tv.context_menu
+        )
+        for menu in context_menus:
+            if menu.winfo_exists() and event.widget != menu:
+                menu.unpost()
 
     def copyIP(self):
         """
@@ -287,15 +285,15 @@ class App(ttk.Frame):
 
         if self.treeview.selection():
             ip, _, queryPort = get_selected_ip(self.treeview.selection()[0])
-            server_db_info = serverDict.get(f'{ip}:{queryPort}')
-            logInfo = f'{server_db_info.get("name")} - {ip}:{queryPort}'
+            serverDict_info = serverDict.get(f'{ip}:{queryPort}')
+            logInfo = f'{serverDict_info.get("name")} - {ip}:{queryPort}'
 
             if fav_state:
                 logMessage = f'{logInfo} - Added to Favorites'
                 logging.info(logMessage)
                 print(logMessage)
 
-                settings['favorites'][f'{ip}:{queryPort}'] = {'name': server_db_info.get('name')}
+                settings['favorites'][f'{ip}:{queryPort}'] = {'name': serverDict_info.get('name')}
             else:
                 logMessage = f'{logInfo} - Removed from Favorites'
                 logging.info(logMessage)
@@ -345,9 +343,13 @@ class App(ttk.Frame):
         This is currently displayed as the Last Joined under the Server Info tab.
         """
         last_joined = 'Unknown'
+
         if f'{ip}:{queryPort}' in settings.get('history'):
             timestamp = settings.get('history').get(f'{ip}:{queryPort}').get('last_joined')
-            dt_timestamp = datetime.strptime(settings.get('history').get(f'{ip}:{queryPort}').get('last_joined'), '%Y-%m-%d %H:%M:%S.%f%z')
+            dt_timestamp = datetime.strptime(
+                settings.get('history').get(f'{ip}:{queryPort}').get('last_joined'),
+                '%Y-%m-%d %H:%M:%S.%f%z'
+            )
             last_joined = dt_timestamp.strftime('%Y-%m-%d @ %H:%M')
 
         return last_joined
@@ -506,14 +508,27 @@ class App(ttk.Frame):
         Opens file browser/explorer and select/hightlight the symlink.
         """
         global rightClickItem
-        symlink = str(self.installed_mods_tv.item(rightClickItem)["values"][0])
-        symlink_dir = os.path.join(settings.get('dayz_dir'), sym_folder)
-        win_symlink = os.path.normpath(os.path.join(symlink_dir, symlink))
+        symlinkName = str(self.installed_mods_tv.item(rightClickItem)["values"][0])
+        symlinkDir = os.path.join(settings.get('dayz_dir'), sym_folder)
+        symlink = os.path.normpath(os.path.join(symlinkDir, symlinkName))
+
+        dbus_command = (
+            "dbus-send",
+            "--session",
+            "--print-reply",
+            "--dest=org.freedesktop.FileManager1",
+            "--type=method_call",
+            "/org/freedesktop/FileManager1",
+            "org.freedesktop.FileManager1.ShowItems",
+            f"array:string:file://{symlink}",
+            "string:''"
+        )
 
         if linux_os:
-            open_cmd = ['xdg-open', symlink_dir]
+            # open_cmd = ['xdg-open', symlinkDir]
+            open_cmd = dbus_command
         elif windows_os:
-            open_cmd = ['explorer', '/select,', win_symlink]
+            open_cmd = ['explorer', '/select,', symlink]
 
         try:
             subprocess.Popen(open_cmd)
@@ -580,7 +595,6 @@ class App(ttk.Frame):
         self.treeview.pack(expand=True, fill='both')
         self.treeview.bind('<Control-a>', lambda e: self.treeview.selection_add(self.treeview.get_children()))
         self.treeview.bind('<<TreeviewSelect>>', self.OnSingleClick)
-        self.treeview.bind('<Double-1>', self.OnDoubleClick)
         # Right Click Menu
         self.treeview.bind("<Button-3>", self.rightClick_selection)
         self.treeview.context_menu = tk.Menu(self.treeview, tearoff=0, bd=4, relief='groove')
@@ -601,11 +615,11 @@ class App(ttk.Frame):
 
         # Treeview columns - Set default width
         self.treeview.column('Map', width=110)
-        self.treeview.column('Name', width=445)
+        self.treeview.column('Name', width=435)
         self.treeview.column('Players', width=60)
         self.treeview.column('Max', width=45)
         self.treeview.column('Gametime', width=75)
-        self.treeview.column('IP:GamePort', width=135)
+        self.treeview.column('IP:GamePort', width=145)
         self.treeview.column('QueryPort', width=65)
         self.treeview.column('Ping', width=50)
 
@@ -766,9 +780,19 @@ class App(ttk.Frame):
             self.server_mods_tv.heading(col, text=col, anchor='w', command=lambda _col=col:
                                         treeview_sort_column(self.server_mods_tv, _col, False))
 
-        # self.server_mods_tv.pack(expand=True, fill='both')
         self.server_mods_tv.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky='nsew')
         self.server_mods_tv.bind('<Double-1>', self.OnDoubleClick)
+        # Right Click Menu
+        self.server_mods_tv.bind("<Button-3>", self.rightClick_selection)
+        self.server_mods_tv.context_menu = tk.Menu(
+            self.server_mods_tv, tearoff=0, bd=4, relief='groove'
+        )
+        self.server_mods_tv.context_menu.add_command(
+            label='Open Workshop URL',
+            command=lambda: self.open_steam_url(
+                self.server_mods_tv.item(rightClickItem)["values"][2]
+            )
+        )
 
         self.server_mod_scrollbar.config(command=self.server_mods_tv.yview)
 
@@ -818,9 +842,23 @@ class App(ttk.Frame):
         self.installed_mods_tv.bind('<Double-1>', self.OnDoubleClick)
         # Right Click Menu
         self.installed_mods_tv.bind("<Button-3>", self.rightClick_selection)
-        self.installed_mods_tv.context_menu = tk.Menu(self.installed_mods_tv, tearoff=0, bd=4, relief='groove')
-        self.installed_mods_tv.context_menu.add_command(label='Open Mod Directory', command=self.open_mod_dir)
-        self.installed_mods_tv.context_menu.add_command(label='Open Symlink Directory', command=self.open_sym_dir)
+        self.installed_mods_tv.context_menu = tk.Menu(
+            self.installed_mods_tv, tearoff=0, bd=4, relief='groove'
+        )
+        self.installed_mods_tv.context_menu.add_command(
+            label='Open Mod Directory',
+            command=self.open_mod_dir
+        )
+        self.installed_mods_tv.context_menu.add_command(
+            label='Open Symlink Directory',
+            command=self.open_sym_dir
+        )
+        self.installed_mods_tv.context_menu.add_command(
+            label='Open Workshop URL',
+            command=lambda: self.open_steam_url(
+                self.installed_mods_tv.item(rightClickItem)["values"][3]
+            )
+        )
 
         self.mod_scrollbar.config(command=self.installed_mods_tv.yview)
 
@@ -1237,14 +1275,6 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Gets values from Mods Entry box
     filter_mods = app.mod_entry.get()
 
-    # Clear Server Info tab
-    app.server_info_text.set('')
-    app.server_mods_tv.delete(*app.server_mods_tv.get_children())
-
-    # Unselect previously clicked treeview item
-    app.treeview.selection_set([])
-    app.favorite_var.set(value=False)
-
     # Reset previous filters. If turned on, treeview is reset after every
     # filter update. Without it, you can 'stack' filters and search within
     # the current filtered view. If chkbox_not_toggled is false, which occurs
@@ -1284,6 +1314,14 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # that do not match. Stores hidden items in the global 'hidden_items' list.
     bool_filter_list = [text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_sponsored]
     if any(bool_filter_list):
+        # Clear Server Info tab
+        app.server_info_text.set('')
+        app.server_mods_tv.delete(*app.server_mods_tv.get_children())
+
+        # Unselect previously clicked treeview item
+        app.treeview.selection_set([])
+        app.favorite_var.set(value=False)
+
         for item_id in app.treeview.get_children():
             server_values = app.treeview.item(item_id, 'values')
             map_name = server_values[0]
@@ -1344,7 +1382,7 @@ def restore_treeview():
     hidden_items = set()
 
 
-def generate_server_db(servers):
+def generate_serverDict(servers):
     """
     Generate the serverDict from the DZSA API. Also, adds each map
     to the dayz_maps list which is used to populate the Map combobox
@@ -1411,19 +1449,8 @@ def refresh_servers():
     # Clear search filters and Server Info tab
     app.clear_filters()
 
-    # Clear Treeview. Can probably revert to the Clear Treeview loop below.
-    # Switched to this one at one point when working with threading the
-    # pings to all servers. Ran into an issue where servers were still loading
-    # into the treeview while also trying to be deleted in the event another
-    # 'Request All Servers' was made before the previous one completed.
-    while len(app.treeview.get_children()) > 0:
-        app.treeview.delete(*app.treeview.get_children())
-        # print(len(app.treeview.get_children()))
-        time.sleep(0.5)
-
-    # Clear Treeview
-    # for item in app.treeview.get_children():
-    #     app.treeview.delete(item)
+    # Clear Treeview.
+    app.treeview.delete(*app.treeview.get_children())
 
     # DayZ SA Launcher API. Set the inital Treeview sort to be by total
     # players online. From Highest to Lowest.
@@ -1437,7 +1464,7 @@ def refresh_servers():
     sort_column = 'players'
     servers = sorted(dzsa_response['result'], key=lambda x: x[sort_column], reverse=True)
 
-    generate_server_db(servers)
+    generate_serverDict(servers)
 
     # Loops through all the servers from DZSA API and return the info that is
     # being inserted into the treeview
@@ -1499,12 +1526,8 @@ def thread_pool(server_pings, treeview_children, treeview_list):
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             futures = list(executor.map(server_pings, treeview_children, treeview_list))
 
-        # print(futures)
-        # for future in futures:
-        #     print(future)
-        #     # print(f'done={future.done()}')
     except tk.TclError as te:
-        error_message = f'User probably "Refreshed All Servers" again before first one completed: {te}'
+        error_message = f'User probably pressed "Download Servers" again before first one completed: {te}'
         logging.error(error_message)
         print(error_message)
 
@@ -1601,6 +1624,7 @@ def remove_broken_symlinks(symlink_dir):
     
     Sample dict format - modID: {'name': mod_name, 'hash': sha1[:5]}
     """
+    hashDict.clear()
     # Remove old symlinks
     with os.scandir(settings.get('dayz_dir')) as entries:
         for entry in entries:
