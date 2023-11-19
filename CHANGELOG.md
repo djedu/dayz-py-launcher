@@ -1,4 +1,12 @@
 # Changelog
+## 1.6.3 (2023-11-19)
+### Added
+* Right click menu to Server Info. More options to Installed mods right click
+* Open Symlink Directory now highlights symlink folder on Linux
+
+### Fixed
+* Bug that prevented first single click on server in Server List from working when previous focus was in the filter entry box 
+
 ## 1.6.0 (2023-11-15)
 ### Added
 * Ability to Join a Server on Windows
