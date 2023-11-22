@@ -11,7 +11,7 @@ import threading
 import time
 import tkinter as tk
 from a2s import dayzquery
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from queue import Queue
 from requests.adapters import HTTPAdapter
@@ -29,7 +29,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.6.3'
+version = '1.7.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -152,17 +152,21 @@ class App(ttk.Frame):
         Used to open the Steam Workshop Mod URL when user double clicks
         either a Server Info treeview item or an Installed Mods treeview
         item. This allows the user to easily subscribe to missing mods.
+        Check the region in order to prevent double clicks on the column
+        headings
         """
         widget = event.widget
-        if widget == self.server_mods_tv and self.server_mods_tv.selection():
-            item = self.server_mods_tv.selection()[0]
-            url = self.server_mods_tv.item(item, 'values')[2]
+        region = widget.identify_region(event.x, event.y)
+        if region == 'cell':
+            if widget == self.server_mods_tv and self.server_mods_tv.selection():
+                item = self.server_mods_tv.selection()[0]
+                url = self.server_mods_tv.item(item, 'values')[2]
 
-        elif widget == self.installed_mods_tv and self.installed_mods_tv.selection():
-            item = self.installed_mods_tv.selection()[0]
-            url = self.installed_mods_tv.item(item, 'values')[3]
+            elif widget == self.installed_mods_tv and self.installed_mods_tv.selection():
+                item = self.installed_mods_tv.selection()[0]
+                url = self.installed_mods_tv.item(item, 'values')[3]
 
-        self.open_steam_url(url)
+            self.open_steam_url(url)
 
     def rightClick_selection(self, event):
         """
@@ -234,6 +238,15 @@ class App(ttk.Frame):
         ip, gamePort, _ = get_selected_ip(rightClickItem)
         self.clipboard_clear()
         self.clipboard_append(f'{ip}:{gamePort}')
+
+    def copyIP_QueryPort(self):
+        """
+        Copies the currently selected treeview item IP address & Query Port to the clipboard.
+        """
+        global rightClickItem
+        ip, _, queryPort = get_selected_ip(rightClickItem)
+        self.clipboard_clear()
+        self.clipboard_append(f'{ip}:{queryPort}')
 
     def copyModList(self):
         """
@@ -603,6 +616,7 @@ class App(ttk.Frame):
         self.treeview.context_menu.add_command(label='Copy Game Port', command=self.copyGamePort)
         self.treeview.context_menu.add_command(label='Copy Query Port', command=self.copyQueryPort)
         self.treeview.context_menu.add_command(label='Copy IP:GamePort', command=self.copyIP_GamePort)
+        self.treeview.context_menu.add_command(label='Copy IP:QueryPort', command=self.copyIP_QueryPort)
         self.treeview.context_menu.add_command(label='Copy Mod List', command=self.copyModList)
         self.treeview.context_menu.add_command(label='Copy All Info', command=self.copyAllInfo)
         self.treeview.context_menu.add_separator()
@@ -615,10 +629,11 @@ class App(ttk.Frame):
 
         # Treeview columns - Set default width
         self.treeview.column('Map', width=110)
-        self.treeview.column('Name', width=435)
+        self.treeview.column('Name', width=440)
         self.treeview.column('Players', width=60)
-        self.treeview.column('Max', width=45)
-        self.treeview.column('Gametime', width=75)
+        self.treeview.column('Max', width=30)
+        self.treeview.heading('Gametime', anchor='center')
+        self.treeview.column('Gametime', width=85, anchor='center')
         self.treeview.column('IP:GamePort', width=145)
         self.treeview.column('QueryPort', width=65)
         self.treeview.column('Ping', width=50)
@@ -1329,7 +1344,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
             ip = server_values[5].split(':')[0]
             ip_port = server_values[5]
             queryPort = server_values[6]
-            # str_values = str(server_values)
+
             if text_entered and filter_text.startswith('!'):
                 if filter_text.lower()[1:] in server_name.lower() or filter_text[1:] in ip_port:
                     hide_treeview_item(item_id)
@@ -1487,6 +1502,13 @@ def refresh_servers():
         if MAX_TREEVIEW_LENGTH and i == MAX_TREEVIEW_LENGTH - 1:
             break
 
+    # Get the current list of treeview items before adding Favorites/History. Used to
+    # get the pings in the thread below.
+    treeview_children = app.treeview.get_children()
+
+    # Insert Favorites/History if they don't exist in the server list from DZSAL
+    load_fav_history()
+
     # Enable buttons now that Treeview is Populated
     for button in app.button_list:
         button.configure(state='enabled')
@@ -1496,7 +1518,7 @@ def refresh_servers():
     # app.treeview.get_children() is a list/tuple of all the Treeview Item numbers
     # treeview_list is the tuple values for each Treeview item.
     if any([linux_os, windows_os]):
-        thread = Thread(target=thread_pool, args=(server_pings, app.treeview.get_children(), treeview_list), daemon=True)
+        thread = Thread(target=thread_pool, args=(server_pings, treeview_children, treeview_list), daemon=True)
         thread.start()
 
 
@@ -2216,9 +2238,7 @@ def a2s_query(ip, queryPort, update: bool=True):
     Source: https://github.com/Yepoleb/python-a2s
     """
     try:
-        # print(ip, port, queryPort)
         info = a2s.info((ip, int(queryPort)))
-        # print(info)
         if 'etm' in info.keywords:
             timeAcceleration = int(info.keywords.split('etm')[1].split('.')[0])
         else:
@@ -2321,9 +2341,29 @@ def a2s_mods(ip, queryPort):
         debug_message = f'Timed out getting mods from Server {ip} using QueryPort {queryPort}'
         logging.debug(debug_message)
         print(debug_message)
+        # Use DZSAL Single Server Query API as a backup.
+        get_dzsa_mods(ip, queryPort)
         mods_dict = None
 
     return mods_dict
+
+
+def get_dzsa_mods(ip, queryPort):
+    """
+    Use DZSAL Single Server Query API as a backup in the event a2s_mods
+    fails. I've come across servers that always times out getting dayzquery.
+    Believe it may be an MTU/ISP issue. Example: Packet Captures shows a
+    1507 MTU from server 172.111.51.131 QueryPort 27017. Performing the query
+    from a different ISP works.
+    """
+    debug_message = f'Failed over to getting mods from DZSAL for Server {ip} using QueryPort {queryPort}'
+    logging.debug(debug_message)
+    print(debug_message)
+
+    url = f'https://dayzsalauncher.com/api/v1/query/{ip}/{queryPort}'
+    dzsa_response = get_dzsa_data(url)
+    if dzsa_response:
+        serverDict[f'{ip}:{queryPort}']['mods'] = dzsa_response['result']['mods']
 
 
 def get_ping_cmd(ip):
@@ -2385,7 +2425,6 @@ def update_mod_list(list1, list2):
     return list1
 
 
-# Standalone Launcher
 def get_dzsa_data(url):
     """
     Retrieves server list/data from the DayZ Standalone Launcher API.
@@ -2439,8 +2478,8 @@ def get_dzsa_data(url):
 
 def load_fav_history():
     """
-    This will parse the saved settings json, directly query each server and
-    add them to the Server List treeview and serverDict when the app starts.
+    This will parse the saved settings json and add them to the Server List
+    treeview when the app starts. Then start the thread to query each server.
     Allows you to use the app without the need of downloading all the servers
     from DZSA if you don't need them.
     """
@@ -2448,6 +2487,41 @@ def load_fav_history():
     # Merge favorites and history into one dict.
     fav_history = settings.get('favorites') | settings.get('history')
 
+    # Add to Server List treeview. If treeview is empty, create a list that has
+    # a single entry ([0]) for one loop iteration in order to add Favorites
+    # during the inital app launch
+    treeview_ids = app.treeview.get_children() or [0]
+    inserted_list = []
+    for server, values in fav_history.items():
+        for item_id in treeview_ids:
+            ip, queryPort = server.split(':')
+            stored_name = values.get('name')
+            if item_id != 0:
+                item_values = app.treeview.item(item_id, 'values')
+                item_ip = item_values[5].split(':')[0]
+                item_queryPort = item_values[6]
+            else:
+                item_ip, item_queryPort = '', ''
+
+            if ip == item_ip and queryPort == item_queryPort:
+                break
+        else:
+            # Insert row since IP:QueryPort not found in Treeview
+            treeview_values = ('', stored_name, '', '', '', f'{ip}:', queryPort, '')
+            id = app.treeview.insert('', tk.END, values=treeview_values)
+            inserted_list.append(id)
+
+    # Query each server
+    thread = Thread(target=query_fav_history, args=(inserted_list,), daemon=True)
+    thread.start()
+
+
+def query_fav_history(inserted_list):
+    """
+    Directly query each server in Favorites/History then update the
+    Server List treeview and serverDict. Updated Favorite/History name
+    if changed.
+    """
     MAX_WORKERS = settings.get('max_sim_pings')
     if MAX_WORKERS < 1:
         MAX_WORKERS = 1
@@ -2455,56 +2529,83 @@ def load_fav_history():
     # Make the querying of each server multithreaded
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # Create a list to store the futures
-        futures = []
-        for server, values in fav_history.items():
-            ip, queryPort = server.split(':')
+        futures_dict = {}
+        for id in inserted_list:
+            item_values = app.treeview.item(id, 'values')
+            ip = item_values[5].split(':')[0]
+            queryPort = item_values[6]
 
             # Submit the a2s_query function to the thread pool and store the future
             # Specify 'False' for the update argument in order to trigger an insert
             # into the serverDict instead of an update. Also, creates necessary keys
             # in the serverDict for future query updates
             future = executor.submit(a2s_query, ip, queryPort, False)
-            futures.append((future, server, values))
+            futures_dict[future] = {'id': id, 'values': item_values}
 
-    # Wait for all futures to complete
-    for future, server, values in futures:
-        ip, queryPort = server.split(':')
-        stored_name = values.get('name')
-        ping, info = future.result()
-        if info:
-            a2s_mods(ip, queryPort)
-            server_map = info.map_name.title() if info.map_name.lower() != 'pnw' else 'PNW'
-            server_name = info.server_name
-            players = info.player_count
-            maxPlayers = info.max_players
-            gamePort = info.port
-            time = info.keywords[-5:]
-            dayz_version = info.version
+    try:
+        # Loop through completed futures and update treeview with server info
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            fav_updated = False
+            for future in as_completed(futures_dict):
+                id = futures_dict[future].get('id')
+                item_values = futures_dict[future].get('values')
+                ip = item_values[5].split(':')[0]
+                queryPort = item_values[6]
+                stored_name = item_values[1]
+                ping, info = future.result()
+                if info:
+                    server_map = info.map_name.title() if info.map_name.lower() != 'pnw' else 'PNW'
+                    server_name = info.server_name
+                    players = info.player_count
+                    maxPlayers = info.max_players
+                    gamePort = info.port
+                    time = info.keywords[-5:]
+                    dayz_version = info.version
 
-            treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', queryPort, ping)
-            app.treeview.insert('', tk.END, values=treeview_values)
+                    treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', queryPort, ping)
+                    app.treeview.item(id, text='', values=treeview_values)
 
-            # Generate Map list for Filter Combobox
-            if server_map not in app.dayz_maps and server_map != '':
-                app.dayz_maps.append(server_map)
+                    # Generate Map list for Filter Combobox
+                    if server_map not in app.dayz_maps and server_map != '':
+                        app.dayz_maps.append(server_map)
 
-            # Generate Version list for Filter Combobox
-            if dayz_version not in app.dayz_versions and dayz_version != '':
-                app.dayz_versions.append(dayz_version)
+                    # Generate Version list for Filter Combobox
+                    if dayz_version not in app.dayz_versions and dayz_version != '':
+                        app.dayz_versions.append(dayz_version)
 
-        else:
-            # If the server is down or unreachable, just insert info stored in favorites/history
-            treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', queryPort, '')
-            app.treeview.insert('', tk.END, values=treeview_values)
-            serverDict[f'{ip}:{queryPort}'] = {'name': stored_name, 'mods': []}
+                    # Update stored server name if needed
+                    if stored_name != server_name:
+                        if settings['favorites'].get(f'{ip}:{queryPort}'):
+                            settings['favorites'][f'{ip}:{queryPort}'] = {'name': server_name}
+                        if settings['history'].get(f'{ip}:{queryPort}'):
+                            settings['history'][f'{ip}:{queryPort}']['name'] = server_name
+                        fav_updated = True
 
-    # Sort and set values for the dayzmap list ignoring case
-    app.dayz_maps = sorted(app.dayz_maps)
-    app.map_combobox['values'] = app.dayz_maps
+                    # Add server to executer to query server mods
+                    mod_future = executor.submit(a2s_mods, ip, queryPort)
 
-    # Sort and set values for the dayz_versions list
-    app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
-    app.version_combobox['values'] = app.dayz_versions
+                else:
+                    # If the server is down or unreachable, just insert info stored in favorites/history
+                    # treeview_values = ('Server Down', stored_name, 0, 0, '', f'{ip}:{""}', queryPort, 999)
+                    # treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', queryPort, '')
+                    # app.treeview.item(id, text='', values=treeview_values)
+                    serverDict[f'{ip}:{queryPort}'] = {'name': stored_name, 'mods': [], 'version': 'Unknown'}
+
+        # Sort and set values for the dayzmap list ignoring case
+        app.dayz_maps = sorted(app.dayz_maps)
+        app.map_combobox['values'] = app.dayz_maps
+
+        # Sort and set values for the dayz_versions list
+        app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
+        app.version_combobox['values'] = app.dayz_versions
+
+        if fav_updated:
+            save_settings_to_json()
+
+    except tk.TclError as te:
+        error_message = f'User probably pressed "Download Servers" before Favorites completed: {te}'
+        logging.error(error_message)
+        print(error_message)
 
 
 def get_serverDict_mods(ip, queryPort):
@@ -2537,13 +2638,29 @@ def treeview_sort_column(tv, col, reverse):
     https://stackoverflow.com/questions/67209658/treeview-sort-column-with-float-number
     Possibe TODO: add proper sorting of IP addresses
     """
+    neg_inf_cols = ['Players', 'Max']
+    pos_inf_cols = ['Ping']
+
+    # Used for sorting numerically. Mainly to handle the mod size column and other int columns.
+    # Also handles numeric columns that may have empty stings in the event the server is down.
+    # In that case, use negative or positive infinity to force them to the top or bottom of the
+    # sort.
+    def column_key(t):
+        value = t[0]
+
+        if col in neg_inf_cols and not value.isdecimal():
+            return -float('inf')
+        elif col in pos_inf_cols and not value.isdecimal():
+            return float('inf')
+        else:
+            return float(value.replace(",", ""))
 
     # Use casefold to make the sorting case insensitive
     l = [(tv.set(k, col).casefold(), k) for k in tv.get_children('')]
 
     try:
-        # Used for sorting numerically. Mainly to handle the mod size column and other int
-        l.sort(key=lambda t: float(t[0].replace(",", "")), reverse=reverse)
+        # l.sort(key=lambda t: float(t[0].replace(",", "")), reverse=reverse)
+        l.sort(key=column_key, reverse=reverse)
     except:
         # Sort all other columns
         l.sort(reverse=reverse)
