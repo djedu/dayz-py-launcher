@@ -1,4 +1,19 @@
 # Changelog
+## 1.7.0 (2023-11-21)
+### Added
+* Reinsert Favorites/History in the DZSAL server list if they don't exist
+* Backup for getting server mods in the event dayzquery timedout. Failover to DZSAL's "Check Server" query.
+* Option to "Copy IP:QueryPort" to clipboard in the Right Click menu (Server List)
+
+### Changed
+* Refactored the Load Favorites and History on Startup. Should be faster now and scale better as your Favorites and History list grows.
+* Centered the time column
+
+### Fixed
+* Bug when filtering by "Version" in Favorites/History and the server was down. Caused a NoneType error for those servers.
+* Bug when sorting numeric columns (Players, Max, etc) and the server was down. Caused it to sort as a string.
+* Bug that allowed double-clicking on a column header to try opening a Steam Workshot URL
+
 ## 1.6.3 (2023-11-19)
 ### Added
 * Right click menu to Server Info. More options to Installed mods right click
