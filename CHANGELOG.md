@@ -2,17 +2,18 @@
 ## 1.7.0 (2023-11-21)
 ### Added
 * Reinsert Favorites/History in the DZSAL server list if they don't exist
-* Backup for getting server mods in the event dayzquery timedout. Failover to DZSAL's "Check Server" query.
+* Backup for getting server mods in the event dayzquery timed out. Failover to DZSAL's "Check Server" query.
 * Option to "Copy IP:QueryPort" to clipboard in the Right Click menu (Server List)
 
 ### Changed
-* Refactored the Load Favorites and History on Startup. Should be faster now and scale better as your Favorites and History list grows.
+* Refactored the Load Favorites and History on Startup. Should be faster now and scale better as you add more Favorites and History to your list.
 * Centered the time column
 
 ### Fixed
 * Bug when filtering by "Version" in Favorites/History and the server was down. Caused a NoneType error for those servers.
 * Bug when sorting numeric columns (Players, Max, etc) and the server was down. Caused it to sort as a string.
 * Bug that allowed double-clicking on a column header to try opening a Steam Workshot URL
+#
 
 ## 1.6.3 (2023-11-19)
 ### Added
@@ -20,7 +21,8 @@
 * Open Symlink Directory now highlights symlink folder on Linux
 
 ### Fixed
-* Bug that prevented first single click on server in Server List from working when previous focus was in the filter entry box 
+* Bug that prevented first single click on server in Server List from working when previous focus was in the filter entry box
+#
 
 ## 1.6.0 (2023-11-15)
 ### Added
@@ -32,6 +34,7 @@
 ### Fixed
 * Previous commit in issue #1 caused a new issue if the user selected the wrong Workshop directory. Mod Directory was then created in the wrong location. Now just alert the user to verify settings or wait for Steam to create the directory if it doesn't exist upon first Mod install.
 * Using tkinters' built in askdirectory() would save directories with forward slashes on Windows, which would later result in subprocess commands with directories as parameters being interpreted as command switches.
+#
 
 ## 1.5.0 (2023-11-09)
 ### Added
