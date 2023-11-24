@@ -1,4 +1,16 @@
 # Changelog
+## 1.7.0 (2023-11-24)
+### Added
+* Popup Notification when Joining a server. Will wait for the DayZ exe to be found before closing, else alert the user after 30 seconds that something may be wrong.
+
+### Changed
+* Made "Refresh Selected" threaded.
+
+### Fixed
+* Bug that did not use serverDict mods in the event the a2s query failed.
+* Bug that prevented messages from popping up in the event setting the vm.max_map_count failed
+#
+
 ## 1.7.0 (2023-11-21)
 ### Added
 * Reinsert Favorites/History in the DZSAL server list if they don't exist
