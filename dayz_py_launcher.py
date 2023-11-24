@@ -29,7 +29,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.7.0'
+version = '1.8.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -104,6 +104,104 @@ class App(ttk.Frame):
 
     def MessageBoxWarn(self, message):
         messagebox.showwarning(title=self.message_title, message=message)
+
+    def LoadingBox(self, ip, gamePort, serverName):
+        """
+        This is a popup box that displays the server name and IP of the
+        server the user joined. Sometimes it can take longer than expected
+        for the game window to load. Let's the user know the request is
+        being processed. Once the DayZ executable is found as a running
+        process, the popup will close. Else, after 30 seconds, alert the user
+        that it may have failed and to try checking Steam library Status for
+        DayZ. If it shows running, stop it and try joining the server again.
+        """
+        self.loading_popup = tk.Toplevel(self)
+        self.loading_popup.title(self.message_title)
+        self.loading_popup.geometry('600x150')
+
+        # Create a label for the join message
+        join_message = (
+            f'Joining Server...\n'
+            f'{serverName[:65]}\n'
+            f'IP: {ip} - GamePort: {gamePort}'
+        )
+        self.join_label_var = tk.StringVar(value=join_message)
+        join_label = ttk.Label(self.loading_popup, justify='center', textvariable=self.join_label_var, font=("", 11))
+        join_label.pack(pady=20)
+
+        # Create a label for the loading message
+        self.loading_label_var = tk.StringVar()
+        loading_label = ttk.Label(self.loading_popup, justify='center', textvariable=self.loading_label_var, font=("", 11))
+        loading_label.pack()
+
+        # Create a variable to signal the thread to stop
+        self.stop_thread = threading.Event()
+
+        # Start a thread for the process-checking
+        thread = threading.Thread(target=self.UpdateLoadingBox)
+        thread.start()
+
+        # Schedule closing the loading window after 20 seconds
+        self.loading_popup.after(30000, self.StopLoadingBox)
+
+    def UpdateLoadingBox(self):
+        """
+        Used to check for the DayZ process and close the popup once found.
+        """
+        if linux_os:
+            find_process = ['pgrep', '-f', 'DayZ(_x64)?\.exe']
+        elif windows_os:
+            # Forcing "exit 1" since PowerShell wasn't throwing CalledProcessError on non-matching process queries
+            get_wmi = (
+                r"$process = Get-WmiObject Win32_Process | "
+                r"Where-Object { $_.Name -match 'DayZ(_x64)?\.exe' }; "
+                r"if ($process) { Write-Output $process } else { exit 1 }"
+            )
+            find_process = ['powershell', get_wmi]
+        
+        def find_dayz_exe():
+            # Check if the 'DayZ_x64.exe' or 'DayZ.exe' process exists using subprocess and pgrep
+            try:
+                subprocess.check_output(find_process)
+                return True
+            except subprocess.CalledProcessError:
+                return False
+
+        # Loop until the thread times out (30 seconds) or DayZ process found
+        count = 1
+        while not self.stop_thread.is_set():
+            # Make sure the user hasn't closed the popup manually
+            if not self.loading_popup.winfo_exists():
+                self.stop_thread.set()
+
+            if find_dayz_exe():
+                self.loading_label_var.set('DayZ process found!\n')
+                self.loading_popup.after(2000, self.loading_popup.destroy)
+                self.stop_thread.set()
+                break
+            else:
+                dots = '.' * count
+                self.loading_label_var.set(f'Waiting for DayZ to load{dots}')
+                count = (count + 1) % 4
+
+            time.sleep(1)
+
+    def StopLoadingBox(self):
+        """
+        Used to stop the popup thread and alert the user if it timed out
+        getting the DayZ process.
+        """
+        self.stop_thread.set()
+
+        warn_message = (
+            f'Timed out checking for the DayZ process.\n'
+            f"If the game didn't load, you may need to check the status in your Steam Library.\n"
+            f'If DayZ says "Running", Right Click > Stop and then try rejoining the server.'
+        )
+        logging.warning('Timed out checking for the DayZ process')
+        self.join_label_var.set(warn_message)
+        self.loading_popup.geometry('600x110')
+        self.loading_label_var.set('')
 
     def OnSingleClick(self, event):
         """
@@ -366,12 +464,6 @@ class App(ttk.Frame):
             last_joined = dt_timestamp.strftime('%Y-%m-%d @ %H:%M')
 
         return last_joined
-
-    def update_map_list(self):
-        """
-        Sets value of the map dropdown combobox in Tab 1 (Server List)
-        """
-        self.map_combobox['values'] = self.dayz_maps
 
     def clear_filters(self):
         """
@@ -660,7 +752,6 @@ class App(ttk.Frame):
 
         # Filter/Search Entry Box
         self.filter_text = tk.StringVar()
-        self.default_filter_text = 'Filter Server List    >>>'
 
         self.entry = ttk.Entry(self.widgets_frame, textvariable=self.filter_text)
 
@@ -1293,7 +1384,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Reset previous filters. If turned on, treeview is reset after every
     # filter update. Without it, you can 'stack' filters and search within
     # the current filtered view. If chkbox_not_toggled is false, which occurs
-    # whenever a 'Show Only" checkbox is toggled from On to Off, then we need
+    # whenever a search/filter checkbox is toggled from On to Off, then we need
     # to restore the entries that were previously hidden.
     if app.keypress_filter_var.get() or not chkbox_not_toggled:
         restore_treeview()
@@ -1301,7 +1392,7 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Checks if entry and combobox values exist and are not the
     # default prefilled strings/text. i.e. Like 'Map' in the combobox
     text_entered = False
-    if filter_text != '' and filter_text != app.default_filter_text:
+    if filter_text != '':
         text_entered = True
 
     map_selected = False
@@ -1392,9 +1483,9 @@ def restore_treeview():
     global hidden_items
     for item_id in hidden_items:
         app.treeview.reattach(item_id, '', 'end')
-        # print(f'Re-adding: {item_id}')
+
     treeview_sort_column(app.treeview, 'Players', True)
-    hidden_items = set()
+    hidden_items.clear()
 
 
 def generate_serverDict(servers):
@@ -1561,25 +1652,10 @@ def refresh_selected():
     treeview item
     """
     items = app.treeview.selection()
-    for id in items:
-        item_values = app.treeview.item(id, 'values')
 
-        ip, port = item_values[5].split(':')
-        queryPort = item_values[6]
-
-        ping, _ = a2s_query(ip, queryPort)
-        a2s_mods(ip, queryPort)
-
-        server_dict = serverDict[f'{ip}:{queryPort}']
-        # Since we are manually inserting servers into the DB (i.e. Favorites and History)
-        # that may be down or unable to get all of the server info, skip the following in
-        # that scenario
-        if server_dict.get('environment'):
-            server_info = format_server_list_dzsa([server_dict])
-
-            if ping:
-                app.treeview.item(id, text='', values=server_info + (ping,))
-            app.OnSingleClick('')
+    # Start thread to query each server selected
+    thread = Thread(target=query_item_list, args=(items,), daemon=True)
+    thread.start()
 
 
 def mod_meta_info(metaFile):
@@ -2023,6 +2099,7 @@ def launch_game():
     item = app.treeview.selection()[0]
     # Get IP and Ports info
     ip, port, queryPort = get_selected_ip(item)
+    serverName = app.treeview.item(item, 'values')[1]
 
     # Make sure we have at least the IP and Game Port
     if not all([ip, port]):
@@ -2046,15 +2123,14 @@ def launch_game():
 
     # If failed to get mods directly from the server, fail over to using the mods
     # previously stored in the serverDict
-    if server_mods:
-        missing_mods = compare_modlist(server_mods, installed_mods)
-    else:
+    if not server_mods:
         warn_message = f'Failed getting mods directly from server ({ip}, {queryPort}. Using existing serverDict mod list.)'
         logging.warning(warn_message)
         print(warn_message)
-        missing_mods = compare_modlist(get_serverDict_mods(ip, queryPort), installed_mods)
+        server_mods = get_serverDict_mods(ip, queryPort)
 
     # Alert user that mods are missing
+    missing_mods = compare_modlist(server_mods, installed_mods)
     if missing_mods:
         error_message = 'Unable to join server. Check the "Server Info" tab for missing mods'
         logging.error(error_message)
@@ -2076,13 +2152,14 @@ def launch_game():
             '-skipintro',
         ]
     elif windows_os:
+        dayz_exe = 'DayZ_x64.exe' if '64bit' in architecture else 'DayZ.exe'
         default_params = [
                 gameExecutable,
                 '0',
                 '1',
                 '1',
                 '-exe',
-                'DayZ_x64.exe',
+                dayz_exe,
                 f'-connect={ip}',
                 f'-port={port}',
                 f'-name={settings.get("profile_name")}',
@@ -2112,7 +2189,7 @@ def launch_game():
     # launch_cmd = default_params + steam_custom_params + [mod_params]
     debug_message = f'{launch_cmd=}'
     logging.debug(debug_message)
-    print(debug_message)
+    # print(debug_message)
 
     str_command = " ".join(launch_cmd)
     debug_message = f'Using launch command: {str_command}'
@@ -2133,6 +2210,9 @@ def launch_game():
     # Add server to user's History'
     app.add_history(ip, queryPort)
 
+    # Start the Loading Popup
+    app.LoadingBox(ip, port, serverName)
+
 
 def check_steam_process():
     """
@@ -2140,7 +2220,7 @@ def check_steam_process():
     """
     try:
         if linux_os:
-            output = subprocess.check_output(['pgrep', '-f', 'Steam/ubuntu12_64'])
+            output = subprocess.check_output(['pgrep', '-f', 'Steam/ubuntu12_'])
             # print(output.decode())
         else:
             output = subprocess.check_output(['powershell', 'Get-Process "steam" | Select-Object -ExpandProperty Id'], text=True)
@@ -2214,14 +2294,14 @@ def check_max_map_count():
                     error_output = f'Error output: {e.stderr}'
                     logging.error(error_output)
                     print(error_output)
-                    MessageBoxError(message='Command failed. Check your password.')
+                    app.MessageBoxError(message='Command failed. Check your password.')
                     return False
 
     except subprocess.CalledProcessError as e:
         error_message = f'Error checking vm.max_map_count: {e}'
         logging.error(error_message)
         print(error_message)
-        MessageBoxError(message='Failed to get max_map_count')
+        app.MessageBoxError(message='Failed to get max_map_count')
         return False
 
 
@@ -2506,17 +2586,20 @@ def load_fav_history():
             if ip == item_ip and queryPort == item_queryPort:
                 break
         else:
-            # Insert row since IP:QueryPort not found in Treeview
+            # Insert row since IP & QueryPort not found in Treeview
             treeview_values = ('', stored_name, '', '', '', f'{ip}:', queryPort, '')
             id = app.treeview.insert('', tk.END, values=treeview_values)
             inserted_list.append(id)
 
-    # Query each server
-    thread = Thread(target=query_fav_history, args=(inserted_list,), daemon=True)
+    # Sort by name but on on initial loading of Favorites/History
+    if treeview_ids == [0]:
+        treeview_sort_column(app.treeview, 'Name', False)
+    # Start new thread to query each server
+    thread = Thread(target=query_item_list, args=(inserted_list,), daemon=True)
     thread.start()
 
 
-def query_fav_history(inserted_list):
+def query_item_list(itemList):
     """
     Directly query each server in Favorites/History then update the
     Server List treeview and serverDict. Updated Favorite/History name
@@ -2530,7 +2613,7 @@ def query_fav_history(inserted_list):
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         # Create a list to store the futures
         futures_dict = {}
-        for id in inserted_list:
+        for id in itemList:
             item_values = app.treeview.item(id, 'values')
             ip = item_values[5].split(':')[0]
             queryPort = item_values[6]
@@ -2545,6 +2628,8 @@ def query_fav_history(inserted_list):
     try:
         # Loop through completed futures and update treeview with server info
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            dayz_maps_updated = False
+            version_updated = False
             fav_updated = False
             for future in as_completed(futures_dict):
                 id = futures_dict[future].get('id')
@@ -2568,10 +2653,12 @@ def query_fav_history(inserted_list):
                     # Generate Map list for Filter Combobox
                     if server_map not in app.dayz_maps and server_map != '':
                         app.dayz_maps.append(server_map)
+                        dayz_maps_updated = True
 
                     # Generate Version list for Filter Combobox
                     if dayz_version not in app.dayz_versions and dayz_version != '':
                         app.dayz_versions.append(dayz_version)
+                        version_updated = True
 
                     # Update stored server name if needed
                     if stored_name != server_name:
@@ -2584,23 +2671,24 @@ def query_fav_history(inserted_list):
                     # Add server to executer to query server mods
                     mod_future = executor.submit(a2s_mods, ip, queryPort)
 
-                else:
-                    # If the server is down or unreachable, just insert info stored in favorites/history
-                    # treeview_values = ('Server Down', stored_name, 0, 0, '', f'{ip}:{""}', queryPort, 999)
-                    # treeview_values = ('Server Down', stored_name, '', '', '', f'{ip}:{""}', queryPort, '')
-                    # app.treeview.item(id, text='', values=treeview_values)
+                elif not serverDict.get(f'{ip}:{queryPort}'):
                     serverDict[f'{ip}:{queryPort}'] = {'name': stored_name, 'mods': [], 'version': 'Unknown'}
 
         # Sort and set values for the dayzmap list ignoring case
-        app.dayz_maps = sorted(app.dayz_maps)
-        app.map_combobox['values'] = app.dayz_maps
+        if dayz_maps_updated:
+            app.dayz_maps = sorted(app.dayz_maps)
+            app.map_combobox['values'] = app.dayz_maps
 
         # Sort and set values for the dayz_versions list
-        app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
-        app.version_combobox['values'] = app.dayz_versions
+        if version_updated:
+            app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
+            app.version_combobox['values'] = app.dayz_versions
 
         if fav_updated:
             save_settings_to_json()
+
+        # Force a refresh of currently selected item
+        app.OnSingleClick('')
 
     except tk.TclError as te:
         error_message = f'User probably pressed "Download Servers" before Favorites completed: {te}'
@@ -2752,8 +2840,6 @@ def detect_install_directories():
     # Set default directories for Windows
     elif windows_os:
         import winreg
-        architecture = platform.architecture()[0]
-        logging.debug(f'Architecture: {architecture}')
 
         if '64bit' in architecture:
             steam_key = r'SOFTWARE\Wow6432Node\Valve\Steam'
@@ -2815,18 +2901,20 @@ def check_platform():
     """
     Check user's platform/OS
     """
-    global linux_os, windows_os
+    global linux_os, windows_os, architecture
     windows_os = False
     linux_os = False
 
     system_os = platform.system()
+    architecture = platform.architecture()[0]
 
     if system_os.lower() == 'linux':
         linux_os = True
     elif system_os.lower() == 'windows':
         windows_os = True
-
+    
     logging.debug(f'Platform: {system_os}')
+    logging.debug(f'Architecture: {architecture}')
 
 
 def get_latest_release(url):
