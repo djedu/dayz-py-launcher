@@ -1,5 +1,5 @@
 # Changelog
-## 1.7.0 (2023-11-24)
+## 1.8.0 (2023-11-24)
 ### Added
 * Popup Notification when Joining a server. Will wait for the DayZ exe to be found before closing, else alert the user after 30 seconds that something may be wrong.
 
