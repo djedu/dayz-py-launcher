@@ -1,4 +1,15 @@
 # Changelog
+## 1.8.1 (2023-12-12)
+### Added
+* Logging/displaying the URL that failed DZSAL's server check.
+
+### Changed
+* Adjust Server Mods treeview to allow longer names to be displayed.
+
+### Fixed
+* Removed unused modules (Queue).
+#
+
 ## 1.8.0 (2023-11-24)
 ### Added
 * Popup Notification when Joining a server. Will wait for the DayZ exe to be found before closing, else alert the user after 30 seconds that something may be wrong.
