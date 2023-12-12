@@ -13,7 +13,6 @@ import tkinter as tk
 from a2s import dayzquery
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from queue import Queue
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from threading import Event, Thread
@@ -29,7 +28,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '1.8.0'
+version = '1.8.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -903,9 +902,9 @@ class App(ttk.Frame):
         self.server_mod_scrollbar.config(command=self.server_mods_tv.yview)
 
         # Server Mods Treeview columns
-        self.server_mods_tv.column('Name', width=250)
-        self.server_mods_tv.column('Workshop ID', width=250)
-        self.server_mods_tv.column('Steam Workshop / Download URL', width=400)
+        self.server_mods_tv.column('Name', width=360)
+        self.server_mods_tv.column('Workshop ID', width=175)
+        self.server_mods_tv.column('Steam Workshop / Download URL', width=365)
         self.server_mods_tv.column('Status', width=125)
 
         # Server Info Label & Textvariable (Below Server Mods Treeview)
@@ -2527,7 +2526,7 @@ def get_dzsa_data(url):
                 api_timeout = False
 
         if api_timeout:
-            warn_message = 'DZSA API Timeout has occured. Try again.'
+            warn_message = f'DZSA API Timeout has occured. Try again.\n{url}'
             logging.warning(warn_message)
             print(warn_message)
             app.MessageBoxWarn(message=warn_message)
@@ -2611,7 +2610,7 @@ def query_item_list(itemList):
 
     # Make the querying of each server multithreaded
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        # Create a list to store the futures
+        # Create a dict to store the futures
         futures_dict = {}
         for id in itemList:
             item_values = app.treeview.item(id, 'values')
