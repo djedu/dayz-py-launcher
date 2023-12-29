@@ -2,6 +2,7 @@ import a2s
 import hashlib
 import json
 import logging
+import multiprocessing
 import os
 import platform
 import re
@@ -15,6 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_compl
 from datetime import datetime, timezone
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from steamworks import STEAMWORKS
 from threading import Event, Thread
 from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 
@@ -35,6 +37,8 @@ gameExecutable = 'steam'
 app_id = '221100'
 sym_folder = '_py'
 settings_json = os.path.join(app_directory, 'dayz_py.json')
+
+steamworks_libraries = os.path.join(app_directory, 'steamworks', 'libs')
 
 # Used for checking/downloading updates
 main_branch_py = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_launcher.py'
@@ -92,6 +96,8 @@ class App(ttk.Frame):
         # Messagebox Title
         self.message_title = 'DayZ Py Message'
 
+        self.steamworks_running = False
+
     def MessageBoxAskYN(self, message):
         return messagebox.askyesno(title=self.message_title, message=message)
 
@@ -137,10 +143,10 @@ class App(ttk.Frame):
         self.stop_thread = threading.Event()
 
         # Start a thread for the process-checking
-        thread = threading.Thread(target=self.UpdateLoadingBox)
+        thread = threading.Thread(target=self.UpdateLoadingBox, daemon=True)
         thread.start()
 
-        # Schedule closing the loading window after 20 seconds
+        # Schedule closing the loading window after 30 seconds
         self.loading_popup.after(30000, self.StopLoadingBox)
 
     def UpdateLoadingBox(self):
@@ -201,6 +207,23 @@ class App(ttk.Frame):
         self.join_label_var.set(warn_message)
         self.loading_popup.geometry('600x110')
         self.loading_label_var.set('')
+
+    def SteamworksBox(self):
+        """
+        This is a popup box that displays the progress of Steam Workshop mod
+        Subscriptions.
+        """
+        self.steamworks_popup = tk.Toplevel(self)
+        self.steamworks_popup.title(self.message_title)
+        self.steamworks_popup.geometry('500x125')
+
+        self.progress_label_var = tk.StringVar(value='Loading Steamworks...')
+        progress_label = ttk.Label(self.steamworks_popup, justify='center', textvariable=self.progress_label_var, font=("", 11))
+        progress_label.pack(pady=(30, 10))
+
+        self.progress_var = tk.DoubleVar()
+        progress_bar = ttk.Progressbar(self.steamworks_popup, variable=self.progress_var, length=300, mode='determinate')
+        progress_bar.pack(pady=10)
 
     def OnSingleClick(self, event):
         """
@@ -273,9 +296,14 @@ class App(ttk.Frame):
         global rightClickItem
         rightClickItem = event.widget.identify_row(event.y)
         if rightClickItem:
-            event.widget.selection_set(rightClickItem)
-            # rightClickValues = event.widget.item(item)['values']
-            event.widget.context_menu.post(event.x_root, event.y_root)
+            itemAlreadySelected = rightClickItem in event.widget.selection()
+            # Allow right click to preserve multiselected rows
+            if itemAlreadySelected and event.widget != self.treeview:
+                event.widget.context_menu.post(event.x_root, event.y_root)
+            else:
+                event.widget.selection_set(rightClickItem)
+                # rightClickValues = event.widget.item(item)['values']
+                event.widget.context_menu.post(event.x_root, event.y_root)
 
     def close_menu(self, event):
         """
@@ -370,6 +398,134 @@ class App(ttk.Frame):
         serverInfo = json.dumps(serverDict.get(f'{ip}:{queryPort}'), indent=4)
         self.clipboard_clear()
         self.clipboard_append(serverInfo)
+
+    def checkProcess(self, process, error_queue, waitTime, progress_queue):
+        """
+        Check if the subprocess has finished. Use the queue to communicate
+        with the Steamworks process in order to update the GUI.
+        """
+        if process.is_alive():
+            self.after(100, lambda: self.checkProcess(process, error_queue, waitTime, progress_queue))
+            if not progress_queue.empty() and self.steamworks_popup.winfo_exists():
+                current_progress = progress_queue.get_nowait()
+                print(current_progress)
+                if len(current_progress) > 2: # Subscribing
+                    self.progress_label_var.set(f'Downloading "{current_progress[0]}"...')
+
+                    # Only update progress bar while "Total" download size is not 0. Note
+                    # "downloaded" is not tracked through "progress_queue", Only "total" and
+                    # "progress".
+                    # {'downloaded': 0, 'total': 621120, 'progress': 0.0}
+                    # {'downloaded': 55424, 'total': 621120, 'progress': 0.08923235445646574}
+                    if current_progress[1] != 0 and current_progress[2]:
+                        self.progress_var.set(current_progress[2] * 100)
+
+                    # Set Progress to 100 if download has completed and Steam reverted all
+                    # download values back to 0 and Item_State is 5 (installed).
+                    # {'downloaded': 0, 'total': 0, 'progress': 0.0}
+                    elif current_progress[3] == 5:
+                        self.progress_var.set(100)
+
+                    # Reset progress bar when switching to next mod
+                    elif self.progress_var.get() == 100:
+                        self.progress_var.set(0)
+                        refresh_server_mod_info()
+
+                else: # Unsubscribing
+                    self.progress_label_var.set(f'Unsubscribing from "{current_progress[0]}"...')
+
+                    if current_progress[1] == 13:
+                        self.progress_var.set(50)
+
+                    elif current_progress[1] == 4:
+                        self.progress_var.set(100)
+
+        else:
+            if not error_queue.empty():
+                self.MessageBoxError(error_queue.get())
+            else:
+                self.after(waitTime, refresh_server_mod_info)
+
+            self.steamworks_popup.after(1000, self.steamworks_popup.destroy)
+            self.steamworks_running = False
+
+    def modRequests(self, treeview, request, waitTime, onlyMissingMods=False):
+        """
+        Subscribes/Unsubscribes to Steam Workshop mods using Steamworks.
+        """
+        if self.steamworks_running:
+            error_message = (
+                'Previous Steamworks request appears to be running. '
+                'Try again once it completes or restart DayZ Py Launcher.'
+            )
+            logging.error(error_message)
+            print(error_message)
+            self.MessageBoxError(error_message)
+            return
+
+        if request == 'Unsubscribe':
+            ask_message = 'Are you sure you want to "Unsubscribe" from selected mod(s)?'
+            answer = app.MessageBoxAskYN(message=ask_message)
+            debug_message = f'Unsubscribe?: {answer}'
+            logging.debug(debug_message)
+            print(debug_message)
+            if not answer:
+                return
+
+        # User clicked "Subscribe All" or "Join Server" button
+        if onlyMissingMods:
+            treeview_list = self.server_mods_tv.get_children()
+        else: # User choose option from right click menu
+            treeview_list = treeview.selection()
+
+        mod_list = []
+        for item_id in treeview_list:
+            mod_values = treeview.item(item_id, 'values')
+            if onlyMissingMods and mod_values[3] == 'Missing':
+                mod_name = mod_values[0]
+                workshop_id = int(mod_values[1])
+            elif not onlyMissingMods and treeview == self.server_mods_tv:
+                mod_name = mod_values[0]
+                workshop_id = int(mod_values[1])
+            elif not onlyMissingMods and treeview == self.installed_mods_tv:
+                mod_name = mod_values[1]
+                workshop_id = int(mod_values[2])
+
+            if (mod_name, workshop_id) not in mod_list:
+                mod_list.append((mod_name, workshop_id))
+
+        # Set up a queue for communication with Steamworks processes
+        error_queue = multiprocessing.Queue()
+        progress_queue = multiprocessing.Queue()
+
+        self.SteamworksBox()
+
+        steamworks_process = multiprocessing.Process(
+            target=CallSteamworksApi,
+            args=(request, mod_list, error_queue, progress_queue),
+            name='SteamworksPy'
+        )
+        steamworks_process.daemon = True
+        steamworks_process.start()
+
+        self.steamworks_running = True
+
+        # Periodically check if the steamworks_process is still alive and update popup
+        self.after(100, lambda: self.checkProcess(steamworks_process, error_queue, waitTime, progress_queue))
+
+    def verifyGameIntegrity(self):
+        """
+        Verifies the Integrity of the DayZ installation. This is the same as going into the
+        properties of DayZ in your Steam Library. Then going to "Installed Files" and "Verify
+        integrity of game files"
+        """
+        ask_message = 'Use Steam to verify the integrity of your DayZ installation files? This may take several minutes.'
+        answer = app.MessageBoxAskYN(message=ask_message)
+        debug_message = f'Verify DayZ Install: {answer}'
+        logging.debug(debug_message)
+        print(debug_message)
+        if answer:
+            self.open_steam_url('steam://validate/221100')
 
     def remove_selected_history(self):
         """
@@ -540,8 +696,16 @@ class App(ttk.Frame):
             self.hide_tab_widgets(self.tab_2_widgets)
 
             self.refresh_info_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.load_workshop_label.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.refresh_info_label.grid(row=2, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.manual_label.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.load_workshop_label.grid(row=2, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.refresh_info_label.grid(row=3, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.method_separator.grid(row=4, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
+            self.auto_label.grid(row=5, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.auto_sub_button.grid(row=6, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.auto_sub_label.grid(row=7, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.method_separator2.grid(row=8, column=0, padx=(20, 20), pady=(0, 15), sticky='ew')
+            self.steam_download_button.grid(row=9, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.steam_download_label.grid(row=10, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
         elif selected_tab == 2:
             # If "Installed Mods" tab is selected
@@ -550,6 +714,8 @@ class App(ttk.Frame):
 
             self.refresh_mod_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
             self.total_label.grid(row=1, column=0, padx=5, pady=10, sticky='nsew')
+            self.verify_separator.grid(row=2, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
+            self.verify_integrity_button.grid(row=3, column=0, padx=5, pady=(5 , 10), sticky='nsew')
 
         elif selected_tab == 3:
             # If "Settings" tab is selected
@@ -557,6 +723,7 @@ class App(ttk.Frame):
             self.hide_tab_widgets(self.tab_4_widgets)
 
             self.version_label.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.open_install_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
     def hide_tab_widgets(self, tab_list):
         """
@@ -583,7 +750,7 @@ class App(ttk.Frame):
             error_message = f'Failed to launch Steam Mod URL.\n\n{e}'
             logging.error(error_message)
             print(error_message)
-            app.MessageBoxError(error_message)
+            self.MessageBoxError(error_message)
 
     def open_mod_dir(self):
         """
@@ -605,7 +772,7 @@ class App(ttk.Frame):
             error_message = f'Failed to open mod directory.\n\n{e}'
             logging.error(error_message)
             print(error_message)
-            app.MessageBoxError(error_message)
+            self.MessageBoxError(error_message)
 
     def open_sym_dir(self):
         """
@@ -640,7 +807,25 @@ class App(ttk.Frame):
             error_message = f'Failed to open symlink directory.\n\n{e}'
             logging.error(error_message)
             print(error_message)
-            app.MessageBoxError(error_message)
+            self.MessageBoxError(error_message)
+
+    def open_install_dir(self):
+        """
+        Opens the DayZ Py Launcher installation or current working directory.
+        """
+        global app_directory
+        if linux_os:
+            open_cmd = ['xdg-open', app_directory]
+        elif windows_os:
+            open_cmd = ['explorer', app_directory]
+
+        try:
+            subprocess.Popen(open_cmd)
+        except subprocess.CalledProcessError as e:
+            error_message = f'Failed to open install directory.\n\n{e}'
+            logging.error(error_message)
+            print(error_message)
+            self.MessageBoxError(error_message)
 
     def toggle_filter_on_keypress(self):
         """
@@ -849,6 +1034,14 @@ class App(ttk.Frame):
             self.widgets_frame, text='Refresh Info', style='Accent.TButton', command=refresh_server_mod_info
         )
 
+        # Manual Method Label
+        self.manual_label = ttk.Label(
+            self.widgets_frame,
+            text='*** Manual Method ***',
+            justify='center',
+            anchor='n',
+        )
+
         # Load Mod in Steam Workshop Label
         self.load_workshop_label = ttk.Label(
             self.widgets_frame,
@@ -861,6 +1054,46 @@ class App(ttk.Frame):
         self.refresh_info_label = ttk.Label(
             self.widgets_frame,
             text='Click "Refresh Info" after\ninstalling missing mods.',
+            justify='center',
+            anchor='n',
+        )
+
+        # Separator
+        self.method_separator = ttk.Separator(self.widgets_frame)
+
+        # Auto Method Label
+        self.auto_label = ttk.Label(
+            self.widgets_frame,
+            text='*** Auto Method ***',
+            justify='center',
+            anchor='n',
+        )
+
+        # Auto Subscribe All Accentbutton
+        self.auto_sub_button = ttk.Button(
+            self.widgets_frame, text='Subscribe All', style='Accent.TButton', command=lambda: self.modRequests(self.server_mods_tv, 'Subscribe', 3000, True)
+        )
+
+        # Auto Subscribe All Instruction Label
+        self.auto_sub_label = ttk.Label(
+            self.widgets_frame,
+            text='Uses Steamworks API to\ninstall all missing mods\nfor selected server.',
+            justify='center',
+            anchor='n',
+        )
+
+        # Separator
+        self.method_separator2 = ttk.Separator(self.widgets_frame)
+
+        # Open Steam Downloads Accentbutton
+        self.steam_download_button = ttk.Button(
+            self.widgets_frame, text='Steam Downloads', style='Accent.TButton', command=lambda: self.open_steam_url('steam://nav/downloads')
+        )
+
+        # Open Steam Downloads Label
+        self.steam_download_label = ttk.Label(
+            self.widgets_frame,
+            text="Open Steam's Download\n status page.",
             justify='center',
             anchor='n',
         )
@@ -898,7 +1131,20 @@ class App(ttk.Frame):
                 self.server_mods_tv.item(rightClickItem)["values"][2]
             )
         )
-
+        self.server_mods_tv.context_menu.add_command(
+            label='Subscribe',
+            command=lambda: Thread(
+                target=self.modRequests(self.server_mods_tv, 'Subscribe', 3000),
+                daemon=True
+            ).start()
+        )
+        self.server_mods_tv.context_menu.add_command(
+            label='Unsubscribe',
+            command=lambda: Thread(
+                target=self.modRequests(self.server_mods_tv, 'Unsubscribe', 5000),
+                daemon=True
+            ).start()
+        )
         self.server_mod_scrollbar.config(command=self.server_mods_tv.yview)
 
         # Server Mods Treeview columns
@@ -964,7 +1210,13 @@ class App(ttk.Frame):
                 self.installed_mods_tv.item(rightClickItem)["values"][3]
             )
         )
-
+        self.installed_mods_tv.context_menu.add_command(
+            label='Unsubscribe',
+            command=lambda: Thread(
+                target=self.modRequests(self.installed_mods_tv, 'Unsubscribe', 5000),
+                daemon=True
+            ).start()
+        )
         self.mod_scrollbar.config(command=self.installed_mods_tv.yview)
 
         # # Installed Mods Treeview columns
@@ -988,6 +1240,14 @@ class App(ttk.Frame):
             anchor='n'
         )
 
+        # Separator
+        self.verify_separator = ttk.Separator(self.widgets_frame)
+
+        # Verify DayZ Integrity Accentbutton
+        self.verify_integrity_button = ttk.Button(
+            self.widgets_frame, text='Verify DayZ', style='Accent.TButton', command=self.verifyGameIntegrity
+        )
+
         # # Tab #4 (Settings)
         self.tab_4 = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_4, text='Settings')
@@ -1000,6 +1260,11 @@ class App(ttk.Frame):
             text=f'Version {version}',
             justify='center',
             anchor='n'
+        )
+
+        # Open DayZ Py Launcher installtion directory Accentbutton
+        self.open_install_button = ttk.Button(
+            self.widgets_frame, text='Install Directory', style='Accent.TButton', command=self.open_install_dir
         )
 
         # Switch (Toggle Dark/Light Mode)
@@ -1040,9 +1305,20 @@ class App(ttk.Frame):
             self.refresh_mod_button,
             self.refresh_info_button,
             self.total_label,
+            self.verify_separator,
+            self.verify_integrity_button,
             self.refresh_info_label,
+            self.manual_label,
             self.load_workshop_label,
-            self.version_label
+            self.method_separator,
+            self.auto_label,
+            self.auto_sub_button,
+            self.auto_sub_label,
+            self.method_separator2,
+            self.steam_download_button,
+            self.steam_download_label,
+            self.version_label,
+            self.open_install_button
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -1064,18 +1340,29 @@ class App(ttk.Frame):
         # Widgets to display on Tab 2
         self.tab_2_widgets = [
             self.refresh_info_button,
+            self.manual_label,
             self.load_workshop_label,
-            self.refresh_info_label
+            self.refresh_info_label,
+            self.method_separator,
+            self.auto_label,
+            self.auto_sub_button,
+            self.auto_sub_label,
+            self.method_separator2,
+            self.steam_download_button,
+            self.steam_download_label
         ]
         # Widgets to display on Tab 3
         self.tab_3_widgets = [
             self.refresh_mod_button,
-            self.total_label
+            self.total_label,
+            self.verify_separator,
+            self.verify_integrity_button
         ]
 
         # Widgets to display on Tab 4
         self.tab_4_widgets = [
-            self.version_label
+            self.version_label,
+            self.open_install_button
         ]
 
 
@@ -2107,6 +2394,9 @@ def launch_game():
         app.MessageBoxError(message=error_message)
         return
 
+    # Make sure Installed mods are up to date
+    generate_mod_treeview()
+
     dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
     # Get list of installed mod ID from the Steam Workshop directory. Handle case where either
     # no mods installed or wrong mod directory is configured. This could be a valid scenario
@@ -2114,8 +2404,6 @@ def launch_game():
     installed_mods = []
     if os.path.exists(dayzWorkshop):
         installed_mods = sorted([f.name for f in os.scandir(dayzWorkshop) if f.is_dir() and os.path.isfile(os.path.join(f.path, 'meta.cpp'))])
-    else:
-        installed_mods = []
 
     # Query the server directly for current mods.
     server_mods = a2s_mods(ip, queryPort)
@@ -2131,10 +2419,18 @@ def launch_game():
     # Alert user that mods are missing
     missing_mods = compare_modlist(server_mods, installed_mods)
     if missing_mods:
-        error_message = 'Unable to join server. Check the "Server Info" tab for missing mods'
-        logging.error(error_message)
-        print(error_message)
-        app.MessageBoxError(message=error_message)
+        ask_message = "Would you like to install all the missing mods for this server?"
+        answer = app.MessageBoxAskYN(message=ask_message)
+        debug_message = f'Install missing mods: {answer}'
+        logging.debug(debug_message)
+        print(debug_message)
+        app.notebook.select(1)
+        if answer:
+            app.modRequests(app.server_mods_tv, 'Subscribe', 3000, True)
+        else:
+            error_message = 'Unable to join server. Check the "Server Info" tab for missing mods'
+            logging.error(error_message)
+            app.MessageBoxError(message=error_message)
         return
 
     # Create the list of commands/parameters that will be passed to subprocess to load the game with mods
@@ -2479,6 +2775,108 @@ def get_ping_cmd(ip):
         logging.error(error_message)
         print(error_message)
         return None
+
+
+def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
+    """
+    Used to Subscribe or Unsubscribe to mods in Steam's Workshop.
+    """
+    # Had a random occurance where Steamworks would partially load even when Steam was closed
+    # but wouldn't throw any exceptions. It would only complain later on during subscribing
+    # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
+    if not check_steam_process():
+        error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
+        logging.error(f'{error_message}')
+        print(error_message)
+        error_queue.put(error_message)
+        return
+
+    steamworks = STEAMWORKS(_libs=steamworks_libraries)
+    try:
+        # Try to start Steamworks
+        steamworks.initialize()
+
+        attempts = 1
+        while not steamworks.loaded() and attempts <= 30:
+            time.sleep(0.5)
+            attempts += 1
+        if not steamworks.loaded():
+            error_message = 'Failed to Initialize Steamworks. Verify Steam is working and try again.'
+            logging.error(error_message)
+            print(error_message)
+            error_queue.put(error_message)
+            return
+    except Exception as error:
+        error_message = f"Steam isn't running. Can't {request} to mod(s)."
+        logging.error(f'{error_message} - {error}')
+        print(error_message)
+        error_queue.put(error_message)
+        return
+
+    def start_callbacks():
+        while not stop_callbacks:
+            steamworks.run_callbacks()
+            time.sleep(0.1)
+
+    # Define callback functions
+    def cbSubItem(*args, **kwargs):
+        print('Item subscribed', args[0].result, args[0].publishedFileId)
+
+    def cbUnsubItem(*args, **kwargs):
+        print('Item unsubscribed', args[0].result, args[0].publishedFileId)
+
+    # Create a variable to signal the thread to stop
+    stop_callbacks = False
+
+    callback_thread = threading.Thread(target=start_callbacks, daemon=True)
+    callback_thread.start()
+
+    # Perform Steamworks Request
+    # Item states/flags...
+    # <EItemState.NONE: 0>
+    # <EItemState.INSTALLED: 4>
+    # <EItemState.SUBSCRIBED|INSTALLED: 5>
+    # <EItemState.SUBSCRIBED|INSTALLED|NEEDS_UPDATE: 13>
+    # <EItemState.SUBSCRIBED|NEEDS_UPDATE|DOWNLOADING: 25>
+    if request == 'Subscribe':
+        steamworks.Workshop.SetItemSubscribedCallback(cbSubItem)
+        for mod in mod_list:
+            mod_name = mod[0]
+            workshop_id = mod[1]
+            print(f'Subscribing to: {mod_name}')
+            item_state = steamworks.Workshop.GetItemState(workshop_id)
+            steamworks.Workshop.SubscribeItem(workshop_id)
+            download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
+
+            while item_state != 5:
+                if item_state == 4 or item_state == 0:
+                    steamworks.Workshop.SubscribeItem(workshop_id)
+                download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
+                item_state = steamworks.Workshop.GetItemState(workshop_id)
+                print(f'{download_info}')
+                print(f'{(item_state,)}')
+                progress_queue.put(
+                    (mod_name, download_info.get('total'), download_info.get('progress'), item_state)
+                )
+                time.sleep(1)
+
+    elif request == 'Unsubscribe':
+        steamworks.Workshop.SetItemUnsubscribedCallback(cbUnsubItem)
+        for mod in mod_list:
+            mod_name = mod[0]
+            workshop_id = mod[1]
+            print(f'Unsubscribing to: {mod_name}')
+            item_state = steamworks.Workshop.GetItemState(workshop_id)
+            while item_state != 4 and item_state != 0:
+                UnsubscribeItem = steamworks.Workshop.UnsubscribeItem(workshop_id)
+                time.sleep(1)
+                item_state = steamworks.Workshop.GetItemState(workshop_id)
+                print(f'{(item_state,)}')
+                progress_queue.put((mod_name, item_state))
+
+    stop_callbacks = True
+    steamworks.unload()
+    time.sleep(1)
 
 
 def update_mod_list(list1, list2):
