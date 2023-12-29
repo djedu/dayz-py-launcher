@@ -1,4 +1,16 @@
 # Changelog
+## 2.0.0 (2023-12-29)
+### Added
+* Steamworks API to allow managing Steam Workshop mod subscriptions/installation. Subscribe or unsubscribe to individual mods or install all missing mods for a selected server.
+* Button to open Steam Downloads (Server Info tab).
+* Button to verify DayZ installtion integrity through Steam. Performs the same operations as "Verify integrity of game files" from DayZ properties in your Steam Library (Installed Mods tab).
+* Button to open the DayZ Py Launcher installation or current working directory (Settings tab).
+
+### Changed
+* Made the Thread that watches for the DayZ process to start after "Joining a Server" a daemon.
+* Right clicking preserves multi-selection in the "Server Info" and "Installed Mods" treeviews as long as you right click one of the selected items. This allows Subscribing/Unsubscribing to multiple mods in the same request.
+#
+
 ## 1.8.1 (2023-12-12)
 ### Added
 * Logging/displaying the URL that failed DZSAL's server check.
