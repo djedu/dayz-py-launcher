@@ -122,9 +122,6 @@ The other Linux DayZ launchers...
 
 Kuch for the Logo
 
-https://github.com/twstagg/SteamworksPy
-https://github.com/philippj/SteamworksPy
-
 philippj and twstagg for SteamworksPy. [philippj](https://github.com/philippj/SteamworksPy) | [License](https://github.com/philippj/SteamworksPy/blob/master/LICENSE) & [twstagg](https://github.com/twstagg/SteamworksPy) | [License](https://github.com/twstagg/SteamworksPy/blob/master/LICENSE)
 
 [Steamworks](https://partner.steamgames.com/)
