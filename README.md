@@ -27,17 +27,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 * The 'Mods' search box allows you to enter a comma separated list. This will filter down the server list to only show servers that contain matching mods for all the mods you entered. Make sure to put a comma after each mod. 
 (Example: winter chernarus, code locks, basebuildingplus)
 
-* Select server to view info and installed mods under the 'Server Info' tab. 
-
-### Install Mods
-* Manual Method - Double click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
-
-* Auto Method - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
-
-### Steamworks Notes
-* When you Unsubscribe to a Workshop mod, it will not be uninstalled until DayZ and Steamworks are both not running. This is a Steam limitation.
-
-* If you want to Download mods through DayZ Py Launcher and play DayZ at the same time, on Linux, you'll need to start DayZ first before Subscribing to the new mods in the Launcher. Else, when you go to start DayZ or Join a Server while the Launcher is Subscribing/Downloading mods, Steam will complain that DayZ is already running.
+* Select server to view info and installed mods under the 'Server Info' tab.
 
 * Set your DayZ 'Profile Name' under the Settings tab. If blank, you won't be able to join servers. 
 
@@ -60,6 +50,16 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 * Any additional launch parameters you'd like to use can be set under the Settings tab. See screenshot above.
 
 * Current default is to ping/query 20 servers at a time when loading the Server List. The lower you set it, the longer it will take to populate the Pings listed for each server. Turning it too high may cause you performance issues. If a server fails to repsond to a ping, it's ping will be listed at '999'.
+
+### Install Mods
+* Manual Method - Double click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
+
+* Auto Method - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
+
+### Steamworks Notes
+* When you Unsubscribe to a Workshop mod, it will not be uninstalled until DayZ and Steamworks are both not running. This is a Steam limitation.
+
+* If you want to Download mods through DayZ Py Launcher and play DayZ at the same time, on Linux, you'll need to start DayZ first before Subscribing to the new mods in the Launcher. Else, when you go to start DayZ or Join a Server while the Launcher is Subscribing/Downloading mods, Steam will complain that DayZ is already running.
 
 ## Not working / Possible limitations
 
