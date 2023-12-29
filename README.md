@@ -1,12 +1,14 @@
 # DayZ Py Launcher
 
-This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Also, works with Windows, but the existing launchers on Windows work far better when it comes to installing mods.
+This is a **Linux** DayZ game launcher and server browser written in Python and uses Tkinter for the GUI. Currently a **WORK-IN-PROGRESS**. Also, works with Windows.
 
 This uses DayZ Standalone Launcher's (DZSAL) API to download the servers. After that, all queries go directly to the server using the a2s & dayzquery modules created by Yepoleb.
 
 Tkinter theme used was created by rdbende (Azure-ttk-theme)
 
-Have done no testing with Flatpak, only the normal Steam install on Manjaro. No auto-install for mods yet, but you can double-click on the missing mod under the 'Server Info' tab and it should load the Workshop in Steam for you to easily 'Subscribe'.
+SteamworksPy from philippj & twstagg
+
+Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 ## Screenshots
 ![Server list/browser](screenshots/server_list.png)
@@ -25,7 +27,17 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 * The 'Mods' search box allows you to enter a comma separated list. This will filter down the server list to only show servers that contain matching mods for all the mods you entered. Make sure to put a comma after each mod. 
 (Example: winter chernarus, code locks, basebuildingplus)
 
-* Select server to view info and installed mods under the 'Server Info' tab. Doble click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
+* Select server to view info and installed mods under the 'Server Info' tab. 
+
+### Install Mods
+* Manual Method - Double click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
+
+* Auto Method - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
+
+### Steamworks Notes
+* When you Unsubscribe to a Workshop mod, it will not be uninstalled until DayZ and Steamworks are both not running. This is a Steam limitation.
+
+* If you want to Download mods through DayZ Py Launcher and play DayZ at the same time, on Linux, you'll need to start DayZ first before Subscribing to the new mods in the Launcher. Else, when you go to start DayZ or Join a Server while the Launcher is Subscribing/Downloading mods, Steam will complain that DayZ is already running.
 
 * Set your DayZ 'Profile Name' under the Settings tab. If blank, you won't be able to join servers. 
 
@@ -54,8 +66,6 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro. No 
 * Joining a server that is password protected (Need special handling?)
 
 * Flatpak may not work since it's untested.
-
-* Auto install mods
 
 * Manual Direct Connect to a server. If you're comfortable with editing the config file (dayz_py.json), you can add or edit an existing Favorite/History entry, Make sure you use the QueryPort and not the GamePort.  Then re-open the launcher. It should now show up in your list.
 
@@ -111,3 +121,10 @@ The other Linux DayZ launchers...
 * [DayZ Linux CLI Launcher](https://github.com/bastimeyer/dayz-linux-cli-launcher/)
 
 Kuch for the Logo
+
+https://github.com/twstagg/SteamworksPy
+https://github.com/philippj/SteamworksPy
+
+philippj and twstagg for SteamworksPy. [philippj](https://github.com/philippj/SteamworksPy) | [License](https://github.com/philippj/SteamworksPy/blob/master/LICENSE) & [twstagg](https://github.com/twstagg/SteamworksPy) | [License](https://github.com/twstagg/SteamworksPy/blob/master/LICENSE)
+
+[Steamworks](https://partner.steamgames.com/)
