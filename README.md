@@ -107,6 +107,8 @@ Files are installed to %AppData%/dayz_py
 
 Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
+Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" module.
+
 ### Manual
 
 Download the compressed (zip, tar, etc) version from the top right. Extract. Open terminal and launch using...
