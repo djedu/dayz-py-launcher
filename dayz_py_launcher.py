@@ -43,6 +43,7 @@ steamworks_libraries = os.path.join(app_directory, 'steamworks', 'libs')
 # Used for checking/downloading updates
 main_branch_py = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_launcher.py'
 main_branch_sh = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh'
+main_branch_ps1 = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.ps1'
 
 # Header used in API request
 headers = {
@@ -3356,9 +3357,14 @@ def install_update():
     """
     Download the latest installer script, add executable permission and run
     """
-    script = 'dayz_py_installer.sh'
     # Download the script
-    install_script = get_latest_release(main_branch_sh)
+    if linux_os:
+        script = 'dayz_py_installer.sh'
+        install_script = get_latest_release(main_branch_sh)
+    elif windows_os:
+        script = 'dayz_py_installer.ps1'
+        install_script = get_latest_release(main_branch_ps1)
+
     if install_script:
         with open(script, 'w') as script_file:
             script_file.write(install_script)
@@ -3369,12 +3375,16 @@ def install_update():
         app.MessageBoxError(error_message)
         return
 
-    # Make the script executable
-    os.chmod(script, 0o755)
+    if linux_os:
+        # Make the script executable
+        os.chmod(script, 0o755)
 
     # Run script
     try:
-        subprocess.run(['./' + script], check=True)
+        if linux_os:
+            subprocess.run(['./' + script], check=True)
+        elif windows_os:
+            subprocess.run(['powershell', '-ExecutionPolicy', 'Unrestricted', '-File', script], check=True)
         info_message = 'Install complete. Restart the Launcher to apply changes.'
         logging.info(info_message)
         app.MessageBoxInfo(message=info_message)
@@ -3389,14 +3399,33 @@ def app_updater():
     """
     Function to combine update check, download and install if user chooses to accept
     """
+    is_installed = is_app_installed()
+    print(f'{is_installed=}')
     updated = update_check()
 
-    if updated:
+    if updated and is_installed:
         ask_message = 'Update Available. Would you like to install it now?'
         answer = app.MessageBoxAskYN(message=ask_message)
         print('Update App:', answer)
-        if answer and linux_os:
+        if answer and (linux_os or windows_os):
             install_update()
+
+    elif updated:
+        app.MessageBoxInfo('There is an update available in the Gitlab repo.')
+
+
+def is_app_installed():
+    """
+    Function to check if DayZ Py Launcher is installed or just running from
+    a "portable" directory
+    """
+    if linux_os:
+        home_dir = os.path.expanduser('~')
+        os_install_dir = f'{home_dir}/.local/share/dayz_py'
+    elif windows_os:
+        os_install_dir = f'{os.getenv("APPDATA")}\\dayz_py'
+
+    return os_install_dir == app_directory
 
 
 if __name__ == '__main__':
@@ -3455,7 +3484,7 @@ if __name__ == '__main__':
 
     # Check for Updates. Delay it until after GUI is up to force popup
     # to center of the app.
-    if settings.get('check_updates') and linux_os:
+    if settings.get('check_updates') and (linux_os or windows_os):
         app.after(3000, lambda: Thread(target=app_updater, daemon=True).start())
 
     root.mainloop()
