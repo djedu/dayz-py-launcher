@@ -87,13 +87,25 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 ### Installer
 
+### Linux...
+
 Run this installer script in your terminal...
 
 `curl -s "https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh" | bash`
 
+Files are downloaded to $HOME/.local/share/dayz_py
+
 Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
-Files are downloaded to $HOME/.local/share/dayz_py
+### Windows...
+
+Run this installer script in PowerShell...
+
+`iwr -useb https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.ps1 | iex`
+
+Files are installed to %AppData%/dayz_py
+
+Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
 ### Manual
 
