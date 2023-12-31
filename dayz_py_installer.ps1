@@ -36,4 +36,5 @@ $Shortcut.Description = $appName
 $Shortcut.IconLocation = "$installFolder\dayz_icon.ico"
 $Shortcut.TargetPath = 'pythonw.exe'
 $Shortcut.Arguments = "`"$pythonScriptPath`""
+$Shortcut.WorkingDirectory = $installFolder
 $Shortcut.Save()
