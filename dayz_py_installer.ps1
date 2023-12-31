@@ -4,7 +4,7 @@ $zipUrl = "https://gitlab.com/tenpenny/dayz-py-launcher/-/archive/main/$mainBran
 
 # Set local directory paths
 $tempDirectory = [System.IO.Path]::GetTempPath()
-$installFolder = [System.IO.Path]::Combine($env:APPDATA, $appName)
+$installFolder = [System.IO.Path]::Combine($env:APPDATA, 'dayz_py')
 $zipFilePath = [System.IO.Path]::Combine($tempDirectory, "$appName.zip")
 
 # Create the full path to the subfolder within the destination folder
