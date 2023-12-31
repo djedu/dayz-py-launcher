@@ -93,9 +93,9 @@ Run this installer script in your terminal...
 
 `curl -s "https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.sh" | bash`
 
-Files are downloaded to $HOME/.local/share/dayz_py
+* Files are downloaded to $HOME/.local/share/dayz_py
 
-Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
+* Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
 ### Windows...
 
@@ -103,11 +103,11 @@ Run this installer script in PowerShell...
 
 `iwr -useb https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.ps1 | iex`
 
-Files are installed to %AppData%/dayz_py
+* Files are installed to %AppData%/dayz_py
 
-Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
+* Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
 
-Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" module.
+* Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" module.
 
 ### Manual
 
