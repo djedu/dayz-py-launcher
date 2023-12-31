@@ -526,7 +526,7 @@ class App(ttk.Frame):
         logging.debug(debug_message)
         print(debug_message)
         if answer:
-            self.open_steam_url('steam://validate/221100')
+            self.open_steam_url(f'steam://validate/{app_id}')
 
     def remove_selected_history(self):
         """
