@@ -287,7 +287,7 @@ class App(ttk.Frame):
                 item = self.installed_mods_tv.selection()[0]
                 url = self.installed_mods_tv.item(item, 'values')[3]
 
-            self.open_steam_url(url)
+            self.open_url(url)
 
     def rightClick_selection(self, event):
         """
@@ -526,7 +526,7 @@ class App(ttk.Frame):
         logging.debug(debug_message)
         print(debug_message)
         if answer:
-            self.open_steam_url(f'steam://validate/{app_id}')
+            self.open_url(f'steam://validate/{app_id}')
 
     def remove_selected_history(self):
         """
@@ -735,7 +735,7 @@ class App(ttk.Frame):
             if grid_item not in tab_list:
                 grid_item.grid_forget()
 
-    def open_steam_url(self, url):
+    def open_url(self, url):
         """
         Opens the mod in the Steam Workshop. Used for subscribing/downloading
         missing mods.
@@ -748,7 +748,7 @@ class App(ttk.Frame):
         try:
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
-            error_message = f'Failed to launch Steam Mod URL.\n\n{e}'
+            error_message = f'Failed to open URL.\n\n{e}'
             logging.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
@@ -1088,7 +1088,7 @@ class App(ttk.Frame):
 
         # Open Steam Downloads Accentbutton
         self.steam_download_button = ttk.Button(
-            self.widgets_frame, text='Steam Downloads', style='Accent.TButton', command=lambda: self.open_steam_url('steam://nav/downloads')
+            self.widgets_frame, text='Steam Downloads', style='Accent.TButton', command=lambda: self.open_url('steam://nav/downloads')
         )
 
         # Open Steam Downloads Label
@@ -1128,7 +1128,7 @@ class App(ttk.Frame):
         )
         self.server_mods_tv.context_menu.add_command(
             label='Open Workshop URL',
-            command=lambda: self.open_steam_url(
+            command=lambda: self.open_url(
                 self.server_mods_tv.item(rightClickItem)["values"][2]
             )
         )
@@ -1207,7 +1207,7 @@ class App(ttk.Frame):
         )
         self.installed_mods_tv.context_menu.add_command(
             label='Open Workshop URL',
-            command=lambda: self.open_steam_url(
+            command=lambda: self.open_url(
                 self.installed_mods_tv.item(rightClickItem)["values"][3]
             )
         )
@@ -3411,7 +3411,11 @@ def app_updater():
             install_update()
 
     elif updated:
-        app.MessageBoxInfo('There is an update available in the Gitlab repo.')
+        ask_message = 'There is an update available in the Gitlab repo. Would you like to download it?'
+        answer = app.MessageBoxAskYN(message=ask_message)
+        print('Open Gitlab Repo?:', answer)
+        if answer:
+            app.open_url('https://gitlab.com/tenpenny/dayz-py-launcher')
 
 
 def is_app_installed():
