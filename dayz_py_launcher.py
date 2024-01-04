@@ -2785,12 +2785,12 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
     # Had a random occurance where Steamworks would partially load even when Steam was closed
     # but wouldn't throw any exceptions. It would only complain later on during subscribing
     # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
-    if not check_steam_process():
-        error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
-        logging.error(f'{error_message}')
-        print(error_message)
-        error_queue.put(error_message)
-        return
+    # if not check_steam_process():
+    #     error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
+    #     logging.error(f'{error_message}')
+    #     print(error_message)
+    #     error_queue.put(error_message)
+    #     return
 
     steamworks = STEAMWORKS(_libs=steamworks_libraries)
     try:
