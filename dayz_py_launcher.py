@@ -82,6 +82,11 @@ windows_os = False
 linux_os = False
 architecture = ''
 
+# Used to check if App was loaded using pythonw.exe since it crashes
+# or throws many exceptions when using "sys.__stdout__.write" or
+# "sys.__stderr__.write"
+disable_console_writes = False
+
 
 class App(ttk.Frame):
     def __init__(self, parent):
@@ -178,7 +183,10 @@ class App(ttk.Frame):
         def find_dayz_exe():
             # Check if the 'DayZ_x64.exe' or 'DayZ.exe' process exists using subprocess and pgrep
             try:
-                subprocess.check_output(find_process)
+                if windows_os:
+                    subprocess.check_output(find_process, creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    subprocess.check_output(find_process)
                 return True
             except subprocess.CalledProcessError:
                 return False
@@ -779,7 +787,10 @@ class App(ttk.Frame):
             open_cmd = ['cmd', '/c', 'start', url]
 
         try:
-            subprocess.Popen(open_cmd)
+            if windows_os:
+                subprocess.Popen(open_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open URL.\n\n{e}'
             logging.error(error_message)
@@ -1297,9 +1308,8 @@ class App(ttk.Frame):
         self.console.tag_configure('stderr', foreground='red')
         self.console.bind('<Control-a>', lambda e: self.selectAllItemsText(self.console))
 
-        if linux_os:
-            sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
-            sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
+        sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
+        sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
 
         # Tab #5 (Settings)
         self.tab_5 = ttk.Frame(self.notebook)
@@ -1444,10 +1454,11 @@ class ConsoleGuiOutput(object):
         self.widget.config(state='disabled')
 
         # Print to console/terminal
-        if self.tag == 'stdout':
-            sys.__stdout__.write(stdstr)
-        else:
-            sys.__stderr__.write(stdstr)
+        if not disable_console_writes:
+            if self.tag == 'stdout':
+                sys.__stdout__.write(stdstr)
+            else:
+                sys.__stderr__.write(stdstr)
 
 
 class SettingsMenu:
@@ -2091,7 +2102,7 @@ def start_steam():
     open_cmd = ['cmd', '/c', 'start', 'steam:']
 
     try:
-        subprocess.Popen(open_cmd)
+        subprocess.Popen(open_cmd, creationflags=subprocess.CREATE_NO_WINDOW)
         time.sleep(5)
     except subprocess.CalledProcessError as e:
         error_message = f'Failed to launch Steam.\n\n{e}'
@@ -2631,7 +2642,7 @@ def check_steam_process():
             output = subprocess.check_output(['pgrep', '-f', 'Steam/ubuntu12_'])
             # print(output.decode())
         elif windows_os:
-            output = subprocess.check_output(['powershell', 'Get-Process "steam" | Select-Object -ExpandProperty Id'], text=True)
+            output = subprocess.check_output(['powershell', 'Get-Process "steam" | Select-Object -ExpandProperty Id'], creationflags=subprocess.CREATE_NO_WINDOW, text=True)
             # print("Process IDs:", output)
         return True
     except subprocess.CalledProcessError:
@@ -2647,7 +2658,7 @@ def check_dayz_process():
             output = subprocess.check_output(['pgrep', '-f', 'DayZ.*exe'])
             # print(output.decode())
         elif windows_os:
-            output = subprocess.check_output(['powershell', 'Get-Process "DayZ" | Select-Object -ExpandProperty Id'], text=True)
+            output = subprocess.check_output(['powershell', 'Get-Process "DayZ" | Select-Object -ExpandProperty Id'], creationflags=subprocess.CREATE_NO_WINDOW, text=True)
             # print("Process IDs:", output)
         return True
     except subprocess.CalledProcessError:
@@ -3585,6 +3596,8 @@ if __name__ == '__main__':
         apply_windows_gui_fixes()
         sym_folder = '_pyw'
         gameExecutable = f'{os.path.join(settings.get("dayz_dir"), "DayZ_BE.exe")}'
+
+        disable_console_writes = 'pythonw.exe' in sys.executable.lower()
 
     root.iconphoto(True, img)
 
