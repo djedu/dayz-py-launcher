@@ -1,4 +1,16 @@
 # Changelog
+## 2.1.0 (2024-01-05)
+### Added
+* Console tab for displaying terminal/console output in the GUI.
+* NTFS check on Windows to make sure the Filesystem supports creating junctions
+
+### Changed
+* Increased the auto refresh timer after unsubscribing to mods.
+
+### Fixed
+* Issue with global vaiable access on Windows when multiprocessing during Steamworks subscriptions.
+#
+
 ## 2.0.0 (2023-12-29)
 ### Added
 * Steamworks API to allow managing Steam Workshop mod subscriptions/installation. Subscribe or unsubscribe to individual mods or install all missing mods for a selected server.
