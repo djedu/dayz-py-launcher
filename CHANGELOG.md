@@ -10,6 +10,8 @@
 
 ### Fixed
 * Issue with global vaiable access on Windows when multiprocessing during Steamworks subscriptions.
+* Issue with CMD and PowerShell windows opening when using "subprocess" and launching app using "pythonw.exe" on Windows
+* Issue with "sys.__stdout__.write" and "sys.__stderr__.write" throwing exceptions or crashing when using "pythonw.exe" on Windows
 #
 
 ## 2.0.0 (2023-12-29)
