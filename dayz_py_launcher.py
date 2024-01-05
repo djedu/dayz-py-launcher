@@ -1297,8 +1297,9 @@ class App(ttk.Frame):
         self.console.tag_configure('stderr', foreground='red')
         self.console.bind('<Control-a>', lambda e: self.selectAllItemsText(self.console))
 
-        sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
-        sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
+        if linux_os:
+            sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
+            sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
 
         # Tab #5 (Settings)
         self.tab_5 = ttk.Frame(self.notebook)
