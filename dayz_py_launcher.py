@@ -8,6 +8,7 @@ import platform
 import re
 import requests
 import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -71,6 +72,15 @@ modDict = {}
 hashDict = {}
 
 hidden_items = set()
+
+# Prevent multiple stdout/prints from ending up on the same line.
+stdout_lock = threading.Lock()
+
+# For issues accessing variables in multiprocessing
+global linux_os, windows_os, architecture
+windows_os = False
+linux_os = False
+architecture = ''
 
 
 class App(ttk.Frame):
@@ -400,13 +410,17 @@ class App(ttk.Frame):
         self.clipboard_clear()
         self.clipboard_append(serverInfo)
 
-    def checkProcess(self, process, error_queue, waitTime, progress_queue):
+    def checkProcess(self, process, error_queue, waitTime, progress_queue, print_queue):
         """
         Check if the subprocess has finished. Use the queue to communicate
         with the Steamworks process in order to update the GUI.
         """
+        if not print_queue.empty():
+            current_stdout = print_queue.get_nowait()
+            print(current_stdout)
+
         if process.is_alive():
-            self.after(100, lambda: self.checkProcess(process, error_queue, waitTime, progress_queue))
+            self.after(100, lambda: self.checkProcess(process, error_queue, waitTime, progress_queue, print_queue))
             if not progress_queue.empty() and self.steamworks_popup.winfo_exists():
                 current_progress = progress_queue.get_nowait()
                 print(current_progress)
@@ -498,12 +512,13 @@ class App(ttk.Frame):
         # Set up a queue for communication with Steamworks processes
         error_queue = multiprocessing.Queue()
         progress_queue = multiprocessing.Queue()
+        print_queue = multiprocessing.Queue()
 
         self.SteamworksBox()
 
         steamworks_process = multiprocessing.Process(
             target=CallSteamworksApi,
-            args=(request, mod_list, error_queue, progress_queue),
+            args=(request, mod_list, error_queue, progress_queue, print_queue),
             name='SteamworksPy'
         )
         steamworks_process.daemon = True
@@ -512,7 +527,7 @@ class App(ttk.Frame):
         self.steamworks_running = True
 
         # Periodically check if the steamworks_process is still alive and update popup
-        self.after(100, lambda: self.checkProcess(steamworks_process, error_queue, waitTime, progress_queue))
+        self.after(100, lambda: self.checkProcess(steamworks_process, error_queue, waitTime, progress_queue, print_queue))
 
     def verifyGameIntegrity(self):
         """
@@ -527,6 +542,19 @@ class App(ttk.Frame):
         print(debug_message)
         if answer:
             self.open_url(f'steam://validate/{app_id}')
+
+    def selectAllItemsText(self, widget):
+        """
+        Highlight/Select all items or text in a widget
+        """
+        treeviews_list = [self.treeview, self.server_mods_tv, self.installed_mods_tv]
+
+        if widget in treeviews_list:
+            widget.selection_add(widget.get_children())
+        elif widget == self.console:
+            self.console.tag_add(tk.SEL, '1.0', 'end-1c')
+
+        return 'break'
 
     def remove_selected_history(self):
         """
@@ -719,9 +747,14 @@ class App(ttk.Frame):
             self.verify_integrity_button.grid(row=3, column=0, padx=5, pady=(5 , 10), sticky='nsew')
 
         elif selected_tab == 3:
-            # If "Settings" tab is selected
-            # Hide widgets from all tabs except tab_4
+            # If "Console" tab is selected
+            # Hide widgets from all tabs
             self.hide_tab_widgets(self.tab_4_widgets)
+
+        elif selected_tab == 4:
+            # If "Settings" tab is selected
+            # Hide widgets from all tabs except tab_5
+            self.hide_tab_widgets(self.tab_5_widgets)
 
             self.version_label.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
             self.open_install_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
@@ -883,7 +916,7 @@ class App(ttk.Frame):
                                   treeview_sort_column(self.treeview, _col, False))
 
         self.treeview.pack(expand=True, fill='both')
-        self.treeview.bind('<Control-a>', lambda e: self.treeview.selection_add(self.treeview.get_children()))
+        self.treeview.bind('<Control-a>', lambda e: self.selectAllItemsText(self.treeview))
         self.treeview.bind('<<TreeviewSelect>>', self.OnSingleClick)
         # Right Click Menu
         self.treeview.bind("<Button-3>", self.rightClick_selection)
@@ -1121,6 +1154,7 @@ class App(ttk.Frame):
 
         self.server_mods_tv.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky='nsew')
         self.server_mods_tv.bind('<Double-1>', self.OnDoubleClick)
+        self.server_mods_tv.bind('<Control-a>', lambda e: self.selectAllItemsText(self.server_mods_tv))
         # Right Click Menu
         self.server_mods_tv.bind("<Button-3>", self.rightClick_selection)
         self.server_mods_tv.context_menu = tk.Menu(
@@ -1142,7 +1176,7 @@ class App(ttk.Frame):
         self.server_mods_tv.context_menu.add_command(
             label='Unsubscribe',
             command=lambda: Thread(
-                target=self.modRequests(self.server_mods_tv, 'Unsubscribe', 5000),
+                target=self.modRequests(self.server_mods_tv, 'Unsubscribe', 10000),
                 daemon=True
             ).start()
         )
@@ -1192,6 +1226,7 @@ class App(ttk.Frame):
 
         self.installed_mods_tv.pack(expand=True, fill='both')
         self.installed_mods_tv.bind('<Double-1>', self.OnDoubleClick)
+        self.installed_mods_tv.bind('<Control-a>', lambda e: self.selectAllItemsText(self.installed_mods_tv))
         # Right Click Menu
         self.installed_mods_tv.bind("<Button-3>", self.rightClick_selection)
         self.installed_mods_tv.context_menu = tk.Menu(
@@ -1214,7 +1249,7 @@ class App(ttk.Frame):
         self.installed_mods_tv.context_menu.add_command(
             label='Unsubscribe',
             command=lambda: Thread(
-                target=self.modRequests(self.installed_mods_tv, 'Unsubscribe', 5000),
+                target=self.modRequests(self.installed_mods_tv, 'Unsubscribe', 10000),
                 daemon=True
             ).start()
         )
@@ -1249,11 +1284,27 @@ class App(ttk.Frame):
             self.widgets_frame, text='Verify DayZ', style='Accent.TButton', command=self.verifyGameIntegrity
         )
 
-        # # Tab #4 (Settings)
+        # Tab #4 (Console)
         self.tab_4 = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_4, text='Settings')
+        self.notebook.add(self.tab_4, text='Console')
 
-        SettingsMenu(self.tab_4)
+        self.console_scrollbar = ttk.Scrollbar(self.tab_4)
+        self.console_scrollbar.pack(side='right', fill='y')
+
+        self.console = tk.Text(self.tab_4, wrap='word', state='disabled', yscrollcommand=self.console_scrollbar.set)
+        self.console.pack(expand=True, fill='both')
+        self.console_scrollbar.config(command=self.console.yview)
+        self.console.tag_configure('stderr', foreground='red')
+        self.console.bind('<Control-a>', lambda e: self.selectAllItemsText(self.console))
+
+        sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
+        sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
+
+        # Tab #5 (Settings)
+        self.tab_5 = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_5, text='Settings')
+
+        SettingsMenu(self.tab_5)
 
         # Version Label
         self.version_label = ttk.Label(
@@ -1361,10 +1412,41 @@ class App(ttk.Frame):
         ]
 
         # Widgets to display on Tab 4
-        self.tab_4_widgets = [
+        self.tab_4_widgets = []
+
+        # Widgets to display on Tab 5
+        self.tab_5_widgets = [
             self.version_label,
             self.open_install_button
         ]
+
+
+class ConsoleGuiOutput(object):
+    def __init__(self, widget, tag):
+        self.widget = widget
+        self.tag = tag
+        self.max_lines = 1001
+
+    def write(self, stdstr):
+        self.widget.config(state='normal')
+        # Print to GUI Console Tab
+        self.widget.insert('end', stdstr, (self.tag,))
+        # scroll to end
+        self.widget.see('end')
+
+        # Limit Console tab scrollback
+        lines = self.widget.get('0.0', 'end-1c').split('\n')
+        if len(lines) > self.max_lines:
+            # Delete the first line
+            self.widget.delete('1.0', '2.0')
+
+        self.widget.config(state='disabled')
+
+        # Print to console/terminal
+        if self.tag == 'stdout':
+            sys.__stdout__.write(stdstr)
+        else:
+            sys.__stderr__.write(stdstr)
 
 
 class SettingsMenu:
@@ -1975,7 +2057,31 @@ def is_junction(path):
     if windows_os:
         attributesW = ctypes.windll.kernel32.GetFileAttributesW(path)
         return (attributesW != -1) and (attributesW & 0x400) == 0x400
+
+
+def ntfs_check(os_path_object):
+    """
+    Used to check if a drive is NTFS in order to create junctions in Windows OS.    
+    """
+    is_ntfs = True
+    drive_root = os.path.splitdrive(os_path_object)[0] + '\\'
+    drive_info = win32api.GetVolumeInformation(drive_root)
+    name = drive_info[0]
+    filesys = drive_info[4]
+    
+    if filesys.lower() != 'ntfs':
+        is_ntfs = False
+        error_message = (
+            f'The drive DayZ is installed on ({name}) does not appear to be "NTFS". '
+            'This will limit the ability to install mods. Filesystem is currently '
+            f'detected as "{filesys}".'
+        )
+        logging.error(error_message)
+        print(error_message)
+        app.MessageBoxError(error_message)
         
+    return is_ntfs
+
 
 def start_steam():
     """
@@ -2256,6 +2362,11 @@ def generate_mod_treeview():
         app.MessageBoxInfo(debug_message)
         return
 
+    # Make sure DayZ is on an NTFS drive if running in Windows. Else, we won't be able to 
+    # create Junctions
+    if windows_os and not ntfs_check(symlink_dir):
+        return
+
     # Check if symlink_dir exists, if not create it
     if not os.path.exists(symlink_dir):
         os.makedirs(symlink_dir)
@@ -2518,7 +2629,7 @@ def check_steam_process():
         if linux_os:
             output = subprocess.check_output(['pgrep', '-f', 'Steam/ubuntu12_'])
             # print(output.decode())
-        else:
+        elif windows_os:
             output = subprocess.check_output(['powershell', 'Get-Process "steam" | Select-Object -ExpandProperty Id'], text=True)
             # print("Process IDs:", output)
         return True
@@ -2534,7 +2645,7 @@ def check_dayz_process():
         if linux_os:
             output = subprocess.check_output(['pgrep', '-f', 'DayZ.*exe'])
             # print(output.decode())
-        else:
+        elif windows_os:
             output = subprocess.check_output(['powershell', 'Get-Process "DayZ" | Select-Object -ExpandProperty Id'], text=True)
             # print("Process IDs:", output)
         return True
@@ -2579,6 +2690,9 @@ def check_max_map_count():
                         text=True,
                         check=True
                     )
+                    # Redirect stderr manually for GUI Console
+                    sys.stderr.write(f'{result.stderr}\n')
+
                     debug_message = f'Output: {result}'
                     logging.debug(debug_message)
                     print(debug_message)
@@ -2651,32 +2765,36 @@ def a2s_query(ip, queryPort, update: bool=True):
         ping = round(info.ping * 1000)
 
     except TimeoutError:
-        debug_message = f'Timed out getting info/ping from Server {ip} using QueryPort {queryPort}'
-        logging.debug(debug_message)
-        print(debug_message)
-        ping = 999
-        info = None
+        with stdout_lock:
+            debug_message = f'Timed out getting info/ping from Server {ip} using QueryPort {queryPort}'
+            logging.debug(debug_message)
+            print(debug_message)
+            ping = 999
+            info = None
     except OSError as osError:
-        # This error is raised on Windows if the server IP is 0.0.0.0
-        error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
-        logging.error(error_message)
-        print(debug_message)
-        ping = 999
-        info = None
+        with stdout_lock:
+            # This error is raised on Windows if the server IP is 0.0.0.0
+            error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
+            logging.error(error_message)
+            print(debug_message)
+            ping = 999
+            info = None
     except IndexError as ie:
-        error_message = f'IndexError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ie}'
-        logging.error(error_message)
-        print(info)
-        ping = 999
-        info = None
+        with stdout_lock:
+            error_message = f'IndexError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ie}'
+            logging.error(error_message)
+            print(info)
+            ping = 999
+            info = None
     except KeyError as ke:
-        error_message = f'KeyError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ke}'
-        logging.error(error_message)
-        print(info)
-        print(ip, queryPort)
-        ping = 999
-        info = None
-        print(json.dumps(server_update, indent=4))
+        with stdout_lock:
+            error_message = f'KeyError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ke}'
+            logging.error(error_message)
+            print(info)
+            print(ip, queryPort)
+            ping = 999
+            info = None
+            print(json.dumps(server_update, indent=4))
 
     return ping, info
 
@@ -2778,19 +2896,20 @@ def get_ping_cmd(ip):
         return None
 
 
-def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
+def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queue):
     """
     Used to Subscribe or Unsubscribe to mods in Steam's Workshop.
     """
     # Had a random occurance where Steamworks would partially load even when Steam was closed
     # but wouldn't throw any exceptions. It would only complain later on during subscribing
     # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
-    # if not check_steam_process():
-    #     error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
-    #     logging.error(f'{error_message}')
-    #     print(error_message)
-    #     error_queue.put(error_message)
-    #     return
+    if not check_steam_process():
+        error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
+        logging.error(f'{error_message}')
+        # print(error_message)
+        print_queue.put(error_message)
+        error_queue.put(error_message)
+        return
 
     steamworks = STEAMWORKS(_libs=steamworks_libraries)
     try:
@@ -2804,13 +2923,15 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
         if not steamworks.loaded():
             error_message = 'Failed to Initialize Steamworks. Verify Steam is working and try again.'
             logging.error(error_message)
-            print(error_message)
+            # print(error_message)
+            print_queue.put(error_message)
             error_queue.put(error_message)
             return
     except Exception as error:
         error_message = f"Steam isn't running. Can't {request} to mod(s)."
         logging.error(f'{error_message} - {error}')
-        print(error_message)
+        # print(error_message)
+        print_queue.put(error_message)
         error_queue.put(error_message)
         return
 
@@ -2821,10 +2942,12 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
 
     # Define callback functions
     def cbSubItem(*args, **kwargs):
-        print('Item subscribed', args[0].result, args[0].publishedFileId)
+        # print('Item subscribed', args[0].result, args[0].publishedFileId)
+        print_queue.put(('Item subscribed', args[0].result, args[0].publishedFileId))
 
     def cbUnsubItem(*args, **kwargs):
-        print('Item unsubscribed', args[0].result, args[0].publishedFileId)
+        # print('Item unsubscribed', args[0].result, args[0].publishedFileId)
+        print_queue.put(('Item unsubscribed', args[0].result, args[0].publishedFileId))
 
     # Create a variable to signal the thread to stop
     stop_callbacks = False
@@ -2844,7 +2967,8 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
         for mod in mod_list:
             mod_name = mod[0]
             workshop_id = mod[1]
-            print(f'Subscribing to: {mod_name}')
+            # print(f'Subscribing to: {mod_name}')
+            print_queue.put(f'Subscribing to: {mod_name}')
             item_state = steamworks.Workshop.GetItemState(workshop_id)
             steamworks.Workshop.SubscribeItem(workshop_id)
             download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
@@ -2854,8 +2978,10 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
                     steamworks.Workshop.SubscribeItem(workshop_id)
                 download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
                 item_state = steamworks.Workshop.GetItemState(workshop_id)
-                print(f'{download_info}')
-                print(f'{(item_state,)}')
+                # print(f'{download_info}')
+                # print_queue.put(download_info)
+                # print(f'{(item_state,)}')
+                # print_queue.put(f'{(item_state,)}')
                 progress_queue.put(
                     (mod_name, download_info.get('total'), download_info.get('progress'), item_state)
                 )
@@ -2866,13 +2992,15 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue):
         for mod in mod_list:
             mod_name = mod[0]
             workshop_id = mod[1]
-            print(f'Unsubscribing to: {mod_name}')
+            # print(f'Unsubscribing to: {mod_name}')
+            print_queue.put(f'Unsubscribing to: {mod_name}')
             item_state = steamworks.Workshop.GetItemState(workshop_id)
             while item_state != 4 and item_state != 0:
                 UnsubscribeItem = steamworks.Workshop.UnsubscribeItem(workshop_id)
                 time.sleep(1)
                 item_state = steamworks.Workshop.GetItemState(workshop_id)
-                print(f'{(item_state,)}')
+                # print(f'{(item_state,)}')
+                # print_queue.put(f'{(item_state,)}')
                 progress_queue.put((mod_name, item_state))
 
     stop_callbacks = True
@@ -3300,8 +3428,6 @@ def check_platform():
     Check user's platform/OS
     """
     global linux_os, windows_os, architecture
-    windows_os = False
-    linux_os = False
 
     system_os = platform.system()
     architecture = platform.architecture()[0]
@@ -3400,7 +3526,7 @@ def app_updater():
     Function to combine update check, download and install if user chooses to accept
     """
     is_installed = is_app_installed()
-    print(f'{is_installed=}')
+    print(f'Installed: {is_installed}')
     updated = update_check()
 
     if updated and is_installed:
@@ -3454,6 +3580,7 @@ if __name__ == '__main__':
 
     if windows_os:
         import ctypes
+        import win32api
         apply_windows_gui_fixes()
         sym_folder = '_pyw'
         gameExecutable = f'{os.path.join(settings.get("dayz_dir"), "DayZ_BE.exe")}'
