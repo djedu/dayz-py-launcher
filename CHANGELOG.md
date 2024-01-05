@@ -3,6 +3,7 @@
 ### Added
 * Console tab for displaying terminal/console output in the GUI.
 * NTFS check on Windows to make sure the Filesystem supports creating junctions
+* CTRL + A to select all items/text in the Server Info, Installed Mods and Console tab.
 
 ### Changed
 * Increased the auto refresh timer after unsubscribing to mods.
