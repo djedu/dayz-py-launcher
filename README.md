@@ -14,6 +14,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 ![Server list/browser](screenshots/server_list.png)
 ![Server Info](screenshots/server_info.png)
 ![Installed Mods](screenshots/installed_mods.png)
+![Console](screenshots/console.png)
 ![Settings](screenshots/settings.png)
 
 ## Current Features / How to use
