@@ -476,6 +476,16 @@ class App(ttk.Frame):
         """
         Subscribes/Unsubscribes to Steam Workshop mods using Steamworks.
         """
+        # Had a random occurance where Steamworks would partially load even when Steam was closed
+        # but wouldn't throw any exceptions. It would only complain later on during subscribing
+        # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
+        if not check_steam_process():
+            error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
+            logging.error(f'{error_message}')
+            print(error_message)
+            self.MessageBoxError(error_message)
+            return
+
         if self.steamworks_running:
             error_message = (
                 'Previous Steamworks request appears to be running. '
@@ -681,6 +691,11 @@ class App(ttk.Frame):
         self.show_favorites_var.set(value=False)
         self.show_history_var.set(value=False)
         self.show_sponsored_var.set(value=False)
+        self.show_first_person_var.set(value=False)
+        self.show_third_person_var.set(value=False)
+        self.show_not_passworded_var.set(value=False)
+        self.show_public_var.set(value=False)
+        self.show_private_var.set(value=False)
         self.favorite_var.set(value=False)
 
     def map_combobox_focus_out(self):
@@ -710,19 +725,24 @@ class App(ttk.Frame):
         if selected_tab == 0:
             # If "Server List" tab is selected
             self.refresh_all_button.grid(row=0, column=0, padx=5, pady=(0, 5), sticky='nsew')
-            self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 10), sticky='nsew')
+            self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 5), sticky='nsew')
             self.keypress_filter.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
             self.entry.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
             self.mod_entry.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
             self.map_combobox.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
             self.version_combobox.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
-            self.show_favorites.grid(row=7, column=0, padx=5, pady=(5, 0), sticky='ew')
+            self.show_favorites.grid(row=7, column=0, padx=5, pady=0, sticky='ew')
             self.show_history.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
-            self.show_sponsored.grid(row=9, column=0, padx=5, pady=(0, 5), sticky='ew')
-            self.clear_filter.grid(row=10, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=11, column=0, padx=(20, 20), pady=5, sticky='ew')
-            self.join_server_button.grid(row=12, column=0, padx=5, pady=5, sticky='nsew')
-            self.favorite.grid(row=13, column=0, padx=5, pady=5, sticky='nsew')
+            self.show_sponsored.grid(row=9, column=0, padx=5, pady=0, sticky='ew')
+            self.show_first_person.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
+            self.show_third_person.grid(row=11, column=0, padx=5, pady=0, sticky='ew')
+            self.show_not_passworded.grid(row=12, column=0, padx=5, pady=0, sticky='ew')
+            self.show_public.grid(row=13, column=0, padx=5, pady=0, sticky='ew')
+            self.show_private.grid(row=14, column=0, padx=5, pady=0, sticky='ew')
+            self.clear_filter.grid(row=15, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=16, column=0, padx=(20, 20), pady=5, sticky='ew')
+            self.join_server_button.grid(row=17, column=0, padx=5, pady=5, sticky='nsew')
+            self.favorite.grid(row=18, column=0, padx=5, pady=(0, 5), sticky='nsew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -888,13 +908,13 @@ class App(ttk.Frame):
         # Create a Frame for input widgets
         self.widgets_frame = ttk.Frame(self, padding=(0, 0, 0, 10))
         self.widgets_frame.grid(
-            row=0, column=1, padx=(0, 0), pady=(40, 5), sticky='nsew', rowspan=3
+            row=0, column=1, padx=(0, 0), pady=(20, 5), sticky='nsew', rowspan=3
         )
         self.widgets_frame.columnconfigure(index=0, weight=1)
 
         # Notebook to hold the Tabs
         self.notebook = ttk.Notebook(self)
-        self.notebook.grid(row=0, column=0, padx=(25, 10), pady=(30, 10), sticky='nsew', rowspan=3)
+        self.notebook.grid(row=0, column=0, padx=(25, 10), pady=(15, 5), sticky='nsew', rowspan=3)
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
         # Tab #1 (Server List)
@@ -1047,6 +1067,36 @@ class App(ttk.Frame):
             self.widgets_frame, text='Sponsored', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
         )
 
+        # Show Only First Person Filter Checkbutton
+        self.show_first_person_var = tk.BooleanVar()
+        self.show_first_person = ttk.Checkbutton(
+            self.widgets_frame, text='First Person Only', variable=self.show_first_person_var, command=lambda: filter_treeview(self.show_first_person_var.get())
+        )
+
+        # Show Only Third Person Filter Checkbutton
+        self.show_third_person_var = tk.BooleanVar()
+        self.show_third_person = ttk.Checkbutton(
+            self.widgets_frame, text='Third Person Only', variable=self.show_third_person_var, command=lambda: filter_treeview(self.show_third_person_var.get())
+        )
+
+        # Show Only Not Passworded Filter Checkbutton
+        self.show_not_passworded_var = tk.BooleanVar()
+        self.show_not_passworded = ttk.Checkbutton(
+            self.widgets_frame, text='Hide Passworded', variable=self.show_not_passworded_var, command=lambda: filter_treeview(self.show_not_passworded_var.get())
+        )
+
+        # Show Only Public Servers Filter Checkbutton
+        self.show_public_var = tk.BooleanVar()
+        self.show_public = ttk.Checkbutton(
+            self.widgets_frame, text='Public', variable=self.show_public_var, command=lambda: filter_treeview(self.show_public_var.get())
+        )
+
+        # Show Only Private Servers Filter Checkbutton
+        self.show_private_var = tk.BooleanVar()
+        self.show_private = ttk.Checkbutton(
+            self.widgets_frame, text='Private', variable=self.show_private_var, command=lambda: filter_treeview(self.show_private_var.get())
+        )
+
         # Clear Filters button
         self.clear_filter = ttk.Button(
             self.widgets_frame, text='Clear Filters', command=self.clear_filters
@@ -1071,8 +1121,8 @@ class App(ttk.Frame):
         self.notebook.add(self.tab_2, text='Server Info')
 
         self.tab_2.columnconfigure(0, weight=1)
-        self.tab_2.rowconfigure(0, weight=2)
-        self.tab_2.rowconfigure(1, weight=1)
+        self.tab_2.rowconfigure(0, weight=5)
+        self.tab_2.rowconfigure(1, weight=3)
 
         # Refresh Info Accentbutton
         self.refresh_info_button = ttk.Button(
@@ -1334,9 +1384,9 @@ class App(ttk.Frame):
         self.switch = ttk.Checkbutton(
             self.widgets_frame, style='Switch.TCheckbutton', command=change_theme
         )
-        self.switch.grid(row=99, column=0, padx=5, pady=10, sticky='se')
+        self.switch.grid(row=99, column=0, padx=0, pady=0, sticky='se')
         # Force Theme Switch to the bottom of the window
-        self.widgets_frame.grid_rowconfigure(14, weight=5)
+        self.widgets_frame.grid_rowconfigure(19, weight=5)
 
         # Sizegrip (Resize Window icon located at bottom right)
         self.sizegrip = ttk.Sizegrip(self)
@@ -1359,6 +1409,11 @@ class App(ttk.Frame):
             self.show_favorites,
             self.show_history,
             self.show_sponsored,
+            self.show_first_person,
+            self.show_third_person,
+            self.show_not_passworded,
+            self.show_public,
+            self.show_private,
             self.favorite,
             self.entry,
             self.mod_entry,
@@ -1395,6 +1450,11 @@ class App(ttk.Frame):
             self.show_favorites,
             self.show_history,
             self.show_sponsored,
+            self.show_first_person,
+            self.show_third_person,
+            self.show_not_passworded,
+            self.show_public,
+            self.show_private,
             self.clear_filter,
             self.separator,
             self.join_server_button,
@@ -1459,6 +1519,9 @@ class ConsoleGuiOutput(object):
                 sys.__stdout__.write(stdstr)
             else:
                 sys.__stderr__.write(stdstr)
+
+    def flush(self):
+        pass
 
 
 class SettingsMenu:
@@ -1651,7 +1714,7 @@ class SettingsMenu:
         """
         global settings, gameExecutable
         install_type = self.install_var.get()
-        print(install_type)
+        print(f'Steam Install Type: {install_type}')
         settings['install_type'] = install_type
         if linux_os:
             if 'flatpak' in install_type:
@@ -1659,7 +1722,7 @@ class SettingsMenu:
             else:
                 gameExecutable = 'steam'
 
-        print(gameExecutable)
+        print(f'Game Executable: {gameExecutable}')
         save_settings_to_json()
 
     def on_theme_change(self):
@@ -1667,7 +1730,7 @@ class SettingsMenu:
         Save users settings whenever they change the Theme.
         """
         global settings
-        print(self.theme_var.get())
+        print(f'Default Theme/Mode: {self.theme_var.get()}')
         root.tk.call('set_theme', self.theme_var.get())
         settings['theme'] = self.theme_var.get()
         save_settings_to_json()
@@ -1678,7 +1741,7 @@ class SettingsMenu:
         or disable loading Favorites and History on App Startup.
         """
         global settings
-        print(self.load_favs_var.get())
+        print(f'Load Favorites/History on Startup: {self.load_favs_var.get()}')
         settings['load_favs_on_startup'] = self.load_favs_var.get()
         save_settings_to_json()
 
@@ -1687,6 +1750,7 @@ class SettingsMenu:
         Check repo for updates to DayZ Py Launcher.
         """
         global settings
+        print(f'Check for Launcher Updates: {self.check_updates_var.get()}')
         settings['check_updates'] = self.check_updates_var.get()
         save_settings_to_json()
 
@@ -1790,16 +1854,22 @@ def filter_treeview(chkbox_not_toggled: bool=True):
         mods_list = [x.strip() for x in filter_mods.split(',')]
         mods_entered = True
 
-    # Gets values from Only Show Favorites checkbox
+    # Gets values from Filter checkboxes
     show_favorites = app.show_favorites_var.get()
-    # Gets values from Only Show History checkbox
     show_history = app.show_history_var.get()
-    # Gets values from Only Show Sponsored checkbox
     show_sponsored = app.show_sponsored_var.get()
+    show_first_person = app.show_first_person_var.get()
+    show_third_person = app.show_third_person_var.get()
+    show_not_passworded = app.show_not_passworded_var.get()
+    show_public = app.show_public_var.get()
+    show_private = app.show_private_var.get()
 
     # Check if ANY of the bools above are true. Then hides/detaches Treeview items
     # that do not match. Stores hidden items in the global 'hidden_items' list.
-    bool_filter_list = [text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_sponsored]
+    bool_filter_list = [
+        text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_sponsored,
+        show_first_person, show_third_person, show_not_passworded, show_public, show_private
+    ]
     if any(bool_filter_list):
         # Clear Server Info tab
         app.server_info_text.set('')
@@ -1843,6 +1913,22 @@ def filter_treeview(chkbox_not_toggled: bool=True):
                 hide_treeview_item(item_id)
 
             if show_sponsored and not serverDict[f'{ip}:{queryPort}'].get('sponsor'):
+                hide_treeview_item(item_id)
+
+            if show_first_person and not serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly'):
+                hide_treeview_item(item_id)
+
+            if show_third_person and serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly'):
+                hide_treeview_item(item_id)
+
+            if show_not_passworded and serverDict[f'{ip}:{queryPort}'].get('password'):
+                hide_treeview_item(item_id)
+                # print('Hiding Passworded Server:', serverDict[f'{ip}:{queryPort}'].get('name'))
+
+            if show_public and serverDict[f'{ip}:{queryPort}'].get('shard') == 'private':
+                hide_treeview_item(item_id)
+
+            if show_private and serverDict[f'{ip}:{queryPort}'].get('shard') == 'public':
                 hide_treeview_item(item_id)
 
 
@@ -2912,17 +2998,6 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
     """
     Used to Subscribe or Unsubscribe to mods in Steam's Workshop.
     """
-    # Had a random occurance where Steamworks would partially load even when Steam was closed
-    # but wouldn't throw any exceptions. It would only complain later on during subscribing
-    # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
-    if not check_steam_process():
-        error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
-        logging.error(f'{error_message}')
-        # print(error_message)
-        print_queue.put(error_message)
-        error_queue.put(error_message)
-        return
-
     steamworks = STEAMWORKS(_libs=steamworks_libraries)
     try:
         # Try to start Steamworks
@@ -3611,7 +3686,7 @@ if __name__ == '__main__':
     app.pack(fill='both', expand=True)
 
     # Set initial window size
-    root.geometry('1280x625')
+    root.geometry('1280x675')
 
     # Warn user if not running on linux_os:
     if not linux_os and not windows_os:
