@@ -2965,11 +2965,11 @@ def get_ping_cmd(ip):
     try:
         if linux_os:
             command = ['ping', '-c', '1', '-W', '1', ip]
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         elif windows_os:
             command = ['ping', ip, '-n', '1', '-w', '1000']
-
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW, text=True)
 
         # Check if the command was successful
         if result.returncode == 0:
