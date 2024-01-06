@@ -1,4 +1,15 @@
 # Changelog
+## 2.2.0 (2024-01-06)
+### Added
+* 5 new filter options for Public & Private Servers, First and Third Person perspective and Hiding servers with passwords
+
+### Changed
+* Size and padding of various widgets to minimize window size due to additional filter options.
+
+### Fixed
+* Missing flush() method on the file-like object (ConsoleGuiOutput) used for redirecting stdout & stderr to GUI.
+#
+
 ## 2.1.0 (2024-01-05)
 ### Added
 * Console tab for displaying terminal/console output in the GUI.
