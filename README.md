@@ -82,9 +82,13 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
     `sudo pacman -S tk`
 
+* If you don't have Python installed on Windows, you can get it from [here](https://www.python.org/downloads/release/python-3116/).
+
+* Make sure Python has been added to your "PATH" (Checkbox on Windows during installation wizard.)
+
 * May also need to install Python's "Requests" module.
 
-* Make sure Python has been added to your "PATH"
+    `pip install requests`
 
 ### Installer
 
