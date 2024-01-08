@@ -84,6 +84,8 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 * May also need to install Python's "Requests" module.
 
+* Make sure Python has been added to your "PATH"
+
 ### Installer
 
 ### Linux...
