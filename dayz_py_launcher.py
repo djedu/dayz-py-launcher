@@ -38,6 +38,9 @@ gameExecutable = 'steam'
 app_id = '221100'
 sym_folder = '_py'
 settings_json = os.path.join(app_directory, 'dayz_py.json')
+windows_os = False
+linux_os = False
+architecture = ''
 
 steamworks_libraries = os.path.join(app_directory, 'steamworks', 'libs')
 
@@ -75,12 +78,6 @@ hidden_items = set()
 
 # Prevent multiple stdout/prints from ending up on the same line.
 stdout_lock = threading.Lock()
-
-# For issues accessing variables in multiprocessing
-global linux_os, windows_os, architecture
-windows_os = False
-linux_os = False
-architecture = ''
 
 # Used to check if App was loaded using pythonw.exe since it crashes
 # or throws many exceptions when using "sys.__stdout__.write" or
@@ -423,9 +420,12 @@ class App(ttk.Frame):
         Check if the subprocess has finished. Use the queue to communicate
         with the Steamworks process in order to update the GUI.
         """
+        open_steam_downloads = False
         if not print_queue.empty():
             current_stdout = print_queue.get_nowait()
             print(current_stdout)
+            if current_stdout == 'Open Steam Downloads':
+                open_steam_downloads = True
 
         if process.is_alive():
             self.after(100, lambda: self.checkProcess(process, error_queue, waitTime, progress_queue, print_queue))
@@ -469,8 +469,13 @@ class App(ttk.Frame):
             else:
                 self.after(waitTime, refresh_server_mod_info)
 
-            self.steamworks_popup.after(1000, self.steamworks_popup.destroy)
+            if self.steamworks_popup.winfo_exists():
+                self.steamworks_popup.after(1000, self.steamworks_popup.destroy)
+
             self.steamworks_running = False
+
+        if open_steam_downloads:
+            self.after(2000, lambda: self.open_url('steam://nav/downloads'))
 
     def modRequests(self, treeview, request, waitTime, onlyMissingMods=False):
         """
@@ -510,6 +515,10 @@ class App(ttk.Frame):
             treeview_list = self.server_mods_tv.get_children()
         else: # User choose option from right click menu
             treeview_list = treeview.selection()
+
+        if not treeview_list:
+            self.MessageBoxError('No mods were selected.')
+            return
 
         mod_list = []
         for item_id in treeview_list:
@@ -760,9 +769,10 @@ class App(ttk.Frame):
             self.auto_label.grid(row=5, column=0, padx=5, pady=(0, 10), sticky='nsew')
             self.auto_sub_button.grid(row=6, column=0, padx=5, pady=(0, 10), sticky='nsew')
             self.auto_sub_label.grid(row=7, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.method_separator2.grid(row=8, column=0, padx=(20, 20), pady=(0, 15), sticky='ew')
-            self.steam_download_button.grid(row=9, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.steam_download_label.grid(row=10, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.steam_download_button.grid(row=8, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.steam_download_label.grid(row=9, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.method_separator2.grid(row=10, column=0, padx=(20, 20), pady=(0, 15), sticky='ew')
+            self.force_mod_update_server_button.grid(row=11, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
         elif selected_tab == 2:
             # If "Installed Mods" tab is selected
@@ -773,6 +783,7 @@ class App(ttk.Frame):
             self.total_label.grid(row=1, column=0, padx=5, pady=10, sticky='nsew')
             self.verify_separator.grid(row=2, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
             self.verify_integrity_button.grid(row=3, column=0, padx=5, pady=(5 , 10), sticky='nsew')
+            self.force_mod_update_installed_button.grid(row=4, column=0, padx=5, pady=(5 , 10), sticky='nsew')
 
         elif selected_tab == 3:
             # If "Console" tab is selected
@@ -1261,6 +1272,17 @@ class App(ttk.Frame):
         )
         self.label.grid(row=1, column=0, padx=(75, 0), sticky='nsew')
 
+        # Attempt to force Steam to update selected mod(s)
+        self.force_mod_update_server_button = ttk.Button(
+            self.widgets_frame,
+            text='Force Mod Update',
+            style='Accent.TButton',
+            command=lambda: Thread(
+                target=self.modRequests(self.server_mods_tv, 'ForceUpdate', 3000),
+                daemon=True
+            ).start()
+        )
+
         # Tab #3 (Installed Mods)
         self.tab_3 = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_3, text='Installed Mods')
@@ -1343,6 +1365,17 @@ class App(ttk.Frame):
         # Verify DayZ Integrity Accentbutton
         self.verify_integrity_button = ttk.Button(
             self.widgets_frame, text='Verify DayZ', style='Accent.TButton', command=self.verifyGameIntegrity
+        )
+
+        # Attempt to force Steam to update selected mod(s)
+        self.force_mod_update_installed_button = ttk.Button(
+            self.widgets_frame,
+            text='Force Mod Update',
+            style='Accent.TButton',
+            command=lambda: Thread(
+                target=self.modRequests(self.installed_mods_tv, 'ForceUpdate', 3000),
+                daemon=True
+            ).start()
         )
 
         # Tab #4 (Console)
@@ -1436,7 +1469,9 @@ class App(ttk.Frame):
             self.steam_download_button,
             self.steam_download_label,
             self.version_label,
-            self.open_install_button
+            self.open_install_button,
+            self.force_mod_update_server_button,
+            self.force_mod_update_installed_button
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -1472,14 +1507,16 @@ class App(ttk.Frame):
             self.auto_sub_label,
             self.method_separator2,
             self.steam_download_button,
-            self.steam_download_label
+            self.steam_download_label,
+            self.force_mod_update_server_button
         ]
         # Widgets to display on Tab 3
         self.tab_3_widgets = [
             self.refresh_mod_button,
             self.total_label,
             self.verify_separator,
-            self.verify_integrity_button
+            self.verify_integrity_button,
+            self.force_mod_update_installed_button
         ]
 
         # Widgets to display on Tab 4
@@ -1918,17 +1955,17 @@ def filter_treeview(chkbox_not_toggled: bool=True):
             if show_first_person and not serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly'):
                 hide_treeview_item(item_id)
 
-            if show_third_person and serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly'):
+            if show_third_person and (serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly') == None or serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly')):
                 hide_treeview_item(item_id)
 
             if show_not_passworded and serverDict[f'{ip}:{queryPort}'].get('password'):
                 hide_treeview_item(item_id)
                 # print('Hiding Passworded Server:', serverDict[f'{ip}:{queryPort}'].get('name'))
 
-            if show_public and serverDict[f'{ip}:{queryPort}'].get('shard') == 'private':
+            if show_public and (not serverDict[f'{ip}:{queryPort}'].get('shard') or serverDict[f'{ip}:{queryPort}'].get('shard') == 'private'):
                 hide_treeview_item(item_id)
 
-            if show_private and serverDict[f'{ip}:{queryPort}'].get('shard') == 'public':
+            if show_private and (not serverDict[f'{ip}:{queryPort}'].get('shard') or serverDict[f'{ip}:{queryPort}'].get('shard') == 'public'):
                 hide_treeview_item(item_id)
 
 
@@ -2658,6 +2695,8 @@ def launch_game():
         ]
     elif windows_os:
         dayz_exe = 'DayZ_x64.exe' if '64bit' in architecture else 'DayZ.exe'
+        if not get_dayz_version(dayz_exe, serverDict[f'{ip}:{queryPort}'].get('version')):
+            return
         default_params = [
                 gameExecutable,
                 '0',
@@ -2867,7 +2906,7 @@ def a2s_query(ip, queryPort, update: bool=True):
             debug_message = f'Timed out getting info/ping from Server {ip} using QueryPort {queryPort}'
             logging.debug(debug_message)
             print(debug_message)
-            ping = 999
+            ping = ''
             info = None
     except OSError as osError:
         with stdout_lock:
@@ -2875,14 +2914,14 @@ def a2s_query(ip, queryPort, update: bool=True):
             error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
             logging.error(error_message)
             print(debug_message)
-            ping = 999
+            ping = ''
             info = None
     except IndexError as ie:
         with stdout_lock:
             error_message = f'IndexError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ie}'
             logging.error(error_message)
             print(info)
-            ping = 999
+            ping = ''
             info = None
     except KeyError as ke:
         with stdout_lock:
@@ -2890,7 +2929,7 @@ def a2s_query(ip, queryPort, update: bool=True):
             logging.error(error_message)
             print(info)
             print(ip, queryPort)
-            ping = 999
+            ping = ''
             info = None
             print(json.dumps(server_update, indent=4))
 
@@ -2999,6 +3038,7 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
     Used to Subscribe or Unsubscribe to mods in Steam's Workshop.
     """
     steamworks = STEAMWORKS(_libs=steamworks_libraries)
+    open_steam_downloads = False
     try:
         # Try to start Steamworks
         steamworks.initialize()
@@ -3049,7 +3089,23 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
     # <EItemState.SUBSCRIBED|INSTALLED: 5>
     # <EItemState.SUBSCRIBED|INSTALLED|NEEDS_UPDATE: 13>
     # <EItemState.SUBSCRIBED|NEEDS_UPDATE|DOWNLOADING: 25>
-    if request == 'Subscribe':
+    if request == 'Unsubscribe' or request == 'ForceUpdate':
+        steamworks.Workshop.SetItemUnsubscribedCallback(cbUnsubItem)
+        for mod in mod_list:
+            mod_name = mod[0]
+            workshop_id = mod[1]
+            # print(f'Unsubscribing to: {mod_name}')
+            print_queue.put(f'Unsubscribing to: {mod_name}')
+            item_state = steamworks.Workshop.GetItemState(workshop_id)
+            while item_state != 4 and item_state != 0:
+                UnsubscribeItem = steamworks.Workshop.UnsubscribeItem(workshop_id)
+                time.sleep(1)
+                item_state = steamworks.Workshop.GetItemState(workshop_id)
+                # print(f'{(item_state,)}')
+                print_queue.put(f'{(item_state,)}')
+                progress_queue.put((mod_name, item_state))
+
+    if request == 'Subscribe' or request == 'ForceUpdate':
         steamworks.Workshop.SetItemSubscribedCallback(cbSubItem)
         for mod in mod_list:
             mod_name = mod[0]
@@ -3063,35 +3119,27 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
             while item_state != 5:
                 if item_state == 4 or item_state == 0:
                     steamworks.Workshop.SubscribeItem(workshop_id)
+                # Steam doesn't seem to download updates while Steamworks is running.
+                # Break and signal to open Steam Downloads page. Mod should begin
+                # downloading or have the option to start the download.
+                if request == 'ForceUpdate' and item_state == 13:
+                    open_steam_downloads = True
+                    break
                 download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
                 item_state = steamworks.Workshop.GetItemState(workshop_id)
                 # print(f'{download_info}')
                 # print_queue.put(download_info)
                 # print(f'{(item_state,)}')
-                # print_queue.put(f'{(item_state,)}')
+                print_queue.put(f'{(item_state,)}')
                 progress_queue.put(
                     (mod_name, download_info.get('total'), download_info.get('progress'), item_state)
                 )
                 time.sleep(1)
 
-    elif request == 'Unsubscribe':
-        steamworks.Workshop.SetItemUnsubscribedCallback(cbUnsubItem)
-        for mod in mod_list:
-            mod_name = mod[0]
-            workshop_id = mod[1]
-            # print(f'Unsubscribing to: {mod_name}')
-            print_queue.put(f'Unsubscribing to: {mod_name}')
-            item_state = steamworks.Workshop.GetItemState(workshop_id)
-            while item_state != 4 and item_state != 0:
-                UnsubscribeItem = steamworks.Workshop.UnsubscribeItem(workshop_id)
-                time.sleep(1)
-                item_state = steamworks.Workshop.GetItemState(workshop_id)
-                # print(f'{(item_state,)}')
-                # print_queue.put(f'{(item_state,)}')
-                progress_queue.put((mod_name, item_state))
-
     stop_callbacks = True
     steamworks.unload()
+    if open_steam_downloads:
+        print_queue.put('Open Steam Downloads')
     time.sleep(1)
 
 
@@ -3287,6 +3335,12 @@ def query_item_list(itemList):
                 elif not serverDict.get(f'{ip}:{queryPort}'):
                     serverDict[f'{ip}:{queryPort}'] = {'name': stored_name, 'mods': [], 'version': 'Unknown'}
 
+                # Update ping if server is down or connection timed out
+                elif serverDict.get(f'{ip}:{queryPort}'):
+                    item_values = list(item_values)
+                    item_values[7] = ping
+                    app.treeview.item(id, text='', values=item_values)
+
         # Sort and set values for the dayzmap list ignoring case
         if dayz_maps_updated:
             app.dayz_maps = sorted(app.dayz_maps)
@@ -3408,6 +3462,9 @@ def change_theme():
 
 
 def parse_vdf(data, target_app_id):
+    """
+    Parse Steam VDF to get game directory
+    """
     path = None
     apps_section = False
 
@@ -3424,6 +3481,35 @@ def parse_vdf(data, target_app_id):
             return path
 
     return None
+
+
+def get_dayz_version(exe, server_version):
+    """
+    Gets the version of the DayZ exe file.
+    https://stackoverflow.com/questions/580924/how-to-access-a-files-properties-on-windows
+    """
+    dayz_exe = f'{os.path.join(settings.get("dayz_dir"), exe)}'
+    language, codepage = win32api.GetFileVersionInfo(dayz_exe, '\\VarFileInfo\\Translation')[0]
+    # Returns version in this format... "1.23.0.157045"
+    product_version = win32api.GetFileVersionInfo(dayz_exe, '\\StringFileInfo\%04x%04x\ProductVersion' % (language, codepage))
+    # Convert product_version to format used in DayZ... "1.23.157045"
+    dayz_version = '.'.join(product_version.split('.')[:2] + product_version.split('.')[3:])
+    
+    print(f'Local DayZ Version: {dayz_version}')
+    print(f'Server DayZ Version: {server_version}')
+
+    join_server = True
+    if dayz_version != server_version:
+        error_message = (
+            f'Your DayZ version ({dayz_version}) does not match the one on the server ({server_version}). '
+            'Try checking for updates in Steam. Also, verify your DayZ install from the "Installed Mods" tab or '
+            'from the DayZ properties in your Steam Library. Continue Joining Server anyways?'
+        )
+        logging.error(error_message)
+        print(error_message)
+        join_server = app.MessageBoxAskYN(error_message)
+        
+    return join_server
 
 
 def detect_install_directories():
@@ -3657,7 +3743,7 @@ if __name__ == '__main__':
         gameExecutable = 'flatpak run com.valvesoftware.Steam'
 
     root = tk.Tk()
-    root.title('DayZ Py Launcher')
+    root.title(appName)
 
     iconFile = os.path.join(app_directory, 'dayz_icon.png')
     img = PhotoImage(file=iconFile)
