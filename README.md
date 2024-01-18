@@ -57,6 +57,8 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 * Auto Method - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
 
+* Force Mod Update - Haven't been able to test this on a lot of mods, but so far it's worked on all of them. If you run into an issue when you can't join a server because it has a newer version of the mod than you, select the mod from either the "Server Info" or "Installed Mods" tab and hit this button.
+
 ### Steamworks Notes
 * When you Unsubscribe to a Workshop mod, it will not be uninstalled until DayZ and Steamworks are both not running. This is a Steam limitation.
 
