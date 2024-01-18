@@ -1,4 +1,14 @@
 # Changelog
+## 2.3.0 (2024-01-18)
+### Added
+* Check local DayZ version against server version on Windows.
+* Force Mod Update button/option for when Steam isn't detecting any available Workshop mod updates.
+
+### Fixed
+* Saved servers (Favorite/History) that are down not being filtered when selecting First/Third Person or Public/Private.
+* Server pings not updating when server is down or connection timed out
+#
+
 ## 2.2.0 (2024-01-06)
 ### Added
 * 5 new filter options for Public & Private Servers, First and Third Person perspective and Hiding servers with passwords
