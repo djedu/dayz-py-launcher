@@ -78,7 +78,7 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 * May not be able to Paste Copied server info (from the Right Click menu) into all applications. [Bug Info](https://github.com/python/cpython/issues/104613)
 
-## Installation
+## Launcher Installation
 
 * Depending on your Python installation and/or Linux Distro, you may need to install additional packages like Tkinter. On Manjaro and others based on Arch, this can be installed by running the following from the terminal...
 
