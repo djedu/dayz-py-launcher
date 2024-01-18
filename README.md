@@ -53,11 +53,11 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 * Current default is to ping/query 20 servers at a time when loading the Server List. The lower you set it, the longer it will take to populate the Pings listed for each server. Turning it too high may cause you performance issues. If a server fails to repsond to a ping, it's ping will be listed at '999'.
 
 ### Install Mods
-* Manual Method - Double click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
+* **Manual Method** - Double click on missing mods to open the Workshop URL and Subscribe. Once the mods are downloaded click the 'Refresh Info' button to update your installed mods.
 
-* Auto Method - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
+* **Auto Method** - Right click on mods and "Subscribe". You can CTRL + Click to select multiple mods. Or use the "Subscribe All" to get all missing mods for the currently selected server.
 
-* Force Mod Update - Haven't been able to test this on a lot of mods, but so far it's worked on all of them. If you run into an issue when you can't join a server because it has a newer version of the mod than you, select the mod from either the "Server Info" or "Installed Mods" tab and hit this button.
+* **Force Mod Update** - Haven't been able to test this on a lot of mods, but so far it's worked on all of them. If you run into an issue when you can't join a server because it has a newer version of the mod than you, select the mod from either the "Server Info" or "Installed Mods" tab and hit this button. You may need to hit the download button (down arrow next to DayZ) in Steam Downloads if it doesn't automatically start. This will depend on your Steam download settings and if you defer updates until you launch the game. Steamworks doesn't appear to let me track the download state of Updates, so instead, I tell Steam to open the Download page.
 
 ### Steamworks Notes
 * When you Unsubscribe to a Workshop mod, it will not be uninstalled until DayZ and Steamworks are both not running. This is a Steam limitation.
