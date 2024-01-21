@@ -68,8 +68,6 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 * Flatpak may not work since it's untested.
 
-* Manual Direct Connect to a server. If you're comfortable with editing the config file (dayz_py.json), you can add or edit an existing Favorite/History entry, Make sure you use the QueryPort and not the GamePort.  Then re-open the launcher. It should now show up in your list.
-
 ## Known Bugs
 
 * For some reason the Theme is not being properly applied to tkinter's 'filedialog.askdirectory()'. When you first open it, the text for files/folders and the background are white until you click on one. A workaround I have found is to cancel/close the popup, use the toggle at the bottom right corner of the app to switch dark/light mode off and then back on. Then go back to select a directory. [Bug Info](https://github.com/rdbende/Sun-Valley-ttk-theme/issues/104)
