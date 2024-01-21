@@ -32,7 +32,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '2.4.0'
+version = '2.5.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -3507,7 +3507,6 @@ def treeview_sort_column(tv, col, reverse):
     This Sorts a column when a user clicks on a column heading in a treeview.
     Convert treeview values to float before sorting columns where needed.
     https://stackoverflow.com/questions/67209658/treeview-sort-column-with-float-number
-    Possibe TODO: add proper sorting of IP addresses
     """
     neg_inf_cols = ['Players', 'Max']
     pos_inf_cols = ['Ping']
@@ -3516,22 +3515,32 @@ def treeview_sort_column(tv, col, reverse):
     # Also handles numeric columns that may have empty stings in the event the server is down.
     # In that case, use negative or positive infinity to force them to the top or bottom of the
     # sort.
-    def column_key(t):
-        value = t[0]
+    def column_key(item):
+        value = item[0]
+        val_is_dec = value.isdecimal()
 
-        if col in neg_inf_cols and not value.isdecimal():
+        if col in neg_inf_cols and not val_is_dec:
             return -float('inf')
-        elif col in pos_inf_cols and not value.isdecimal():
+        elif col in pos_inf_cols and not val_is_dec:
             return float('inf')
         else:
             return float(value.replace(",", ""))
+
+    def ip_column_key(item):
+        ip_str, port_str = item[0].split(':')
+        ip = ipaddress.IPv4Address(ip_str)
+        port = int(port_str) if port_str else 0
+        return ip, port
 
     # Use casefold to make the sorting case insensitive
     l = [(tv.set(k, col).casefold(), k) for k in tv.get_children('')]
 
     try:
-        # l.sort(key=lambda t: float(t[0].replace(",", "")), reverse=reverse)
-        l.sort(key=column_key, reverse=reverse)
+        if col != 'IP:GamePort':
+            # l.sort(key=lambda t: float(t[0].replace(",", "")), reverse=reverse)
+            l.sort(key=column_key, reverse=reverse)
+        else:
+            l.sort(key=ip_column_key, reverse=reverse)
     except:
         # Sort all other columns
         l.sort(reverse=reverse)
