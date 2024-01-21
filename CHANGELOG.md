@@ -2,7 +2,6 @@
 ## 2.4.0 (2024-01-20)
 ### Added
 * Ability to manually add a server to the Server List/Favorites
-* Force Mod Update button/option for when Steam isn't detecting any available Workshop mod updates.
 * Hard code window size/geometry after the App loads. Should allow the app to be more dynamic with different Font sizes/DPI.
 
 ### Changed
