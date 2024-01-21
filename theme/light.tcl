@@ -79,6 +79,15 @@ namespace eval ttk::theme::azure-light {
             }
         }
 
+        ttk::style layout Small.TCheckbutton {
+            Small.button -children {
+                Small.padding -children {
+                    Small.indicator -side left
+                    Small.label -side right -expand true
+                }
+            }
+        }
+
         ttk::style layout Switch.TCheckbutton {
             Switch.button -children {
                 Switch.padding -children {
@@ -267,7 +276,7 @@ namespace eval ttk::theme::azure-light {
             ] -border 4 -sticky ewns
 
         # Checkbutton
-        ttk::style configure TCheckbutton -padding 4
+        ttk::style configure TCheckbutton -padding 3
 
         ttk::style element create Checkbutton.indicator image \
             [list $I(box-basic) \
@@ -282,6 +291,22 @@ namespace eval ttk::theme::azure-light {
                 selected $I(check-accent) \
                 {pressed !selected} $I(rect-hover) \
                 active $I(box-hover) \
+            ] -width 26 -sticky w
+
+        # Small Checkbutton
+        ttk::style element create Small.indicator image \
+            [list $I(box-basic_small) \
+                {alternate disabled} $I(check-tri-basic_small) \
+                {selected disabled} $I(check-basic_small) \
+                disabled $I(box-basic_small) \
+                {pressed alternate} $I(check-tri-hover_small) \
+                {active alternate} $I(check-tri-hover_small) \
+                alternate $I(check-tri-accent_small) \
+                {pressed selected} $I(check-hover_small) \
+                {active selected} $I(check-hover_small) \
+                selected $I(check-accent_small) \
+                {pressed !selected} $I(rect-hover_small) \
+                active $I(box-hover_small) \
             ] -width 26 -sticky w
 
         # Switch
