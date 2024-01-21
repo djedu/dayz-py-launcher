@@ -1,4 +1,9 @@
 # Changelog
+## 2.5.0 (2024-01-21)
+### Added
+* Proper IP Address and Port sorting for the IP:GamePort column
+#
+
 ## 2.4.0 (2024-01-20)
 ### Added
 * Ability to manually add a server to the Server List/Favorites
