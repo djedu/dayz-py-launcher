@@ -1,4 +1,19 @@
 # Changelog
+## 2.4.0 (2024-01-20)
+### Added
+* Ability to manually add a server to the Server List/Favorites
+* Force Mod Update button/option for when Steam isn't detecting any available Workshop mod updates.
+* Hard code window size/geometry after the App loads. Should allow the app to be more dynamic with different Font sizes/DPI.
+
+### Changed
+* Moved the Favorites toggle toward the top
+* Decreased the size and padding between the Checkboxes. Was running out of room and didn't want to keep increasing the window size. 
+* With the decreased Checkbox size, the Theme toggle is visible again in the Server List tab
+
+### Fixed
+* Logging and Print messages using the wrong variable name.
+#
+
 ## 2.3.0 (2024-01-18)
 ### Added
 * Check local DayZ version against server version on Windows.
