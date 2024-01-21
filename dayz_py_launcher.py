@@ -32,7 +32,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '2.5.0'
+version = '2.5.1'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -1086,7 +1086,7 @@ class App(ttk.Frame):
         self.mod_entry = ttk.Entry(self.widgets_frame, textvariable=self.mod_text)
         self.mod_entry.insert(0, self.default_mod_text)
         self.mod_entry.bind('<FocusIn>', lambda e: (self.mod_entry.delete('0', 'end')) if self.mod_entry.get() == self.default_mod_text else None)
-        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else None)
+        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else filter_treeview())
         self.mod_entry.bind('<Return>', lambda e: filter_treeview())
         self.mod_entry.bind('<KP_Enter>', lambda e: filter_treeview())
 
