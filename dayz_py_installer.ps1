@@ -17,7 +17,8 @@ Invoke-WebRequest -Uri $zipUrl -OutFile $zipFilePath
 Expand-Archive -Path $zipFilePath -DestinationPath $installFolder -Force
 
 # Move the contents of the subfolder to the destination folder
-Move-Item -Path (Join-Path -Path $destinationSubfolder -ChildPath "*") -Destination $installFolder -Force -ErrorAction SilentlyContinue
+# Move-Item -Path (Join-Path -Path $destinationSubfolder -ChildPath "*") -Destination $installFolder -Force -ErrorAction SilentlyContinue
+robocopy $destinationSubfolder $installFolder /E /MOVE /Z
 
 # Remove the now-empty subfolder
 Remove-Item -Path $destinationSubfolder -Force -Recurse
