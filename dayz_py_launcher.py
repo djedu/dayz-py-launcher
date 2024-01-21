@@ -1,5 +1,6 @@
 import a2s
 import hashlib
+import ipaddress
 import json
 import logging
 import multiprocessing
@@ -630,10 +631,64 @@ class App(ttk.Frame):
                 f'No server is currently selected to add or remove from favorites. '
                 f'Please select a server first.'
             )
-            logging.error(message)
+            logging.error(error_message)
             print(error_message)
             self.favorite_var.set(value=False)
             self.MessageBoxError(message=error_message)
+
+    def get_ip_port_prompt(self):
+        """
+        Loads popup that allows you to add a server by IP and QueryPort.
+        """
+        def ok():
+            nonlocal popup, ip_entry, port_entry, port_label
+            try:
+                port = int(port_entry.get())
+                if port < 1 or port > 65535:
+                    raise ValueError('Port can not be lower than 1 or higher than 65,535.')
+
+                ip = ipaddress.ip_address(ip_entry.get())
+                popup.result = (ip_entry.get(), port)
+                popup.destroy()
+            except ValueError as error:
+                error = str(error)
+                # Invalid IP
+                if 'address' in error:
+                    message = 'Invalid IP Address.'
+                # Invalid Port - Not a number
+                elif 'literal' in error:
+                    message = 'Invalid Port. Must be a number.'
+                # Invalid Port - Not in Range 1-65,535
+                elif '65,535' in error:
+                    message = error
+                port_label.config(text=message)
+
+        popup = tk.Toplevel(self)
+        popup.title('Add Server')
+        popup.geometry('360x150')
+        popup.result = None
+        popup.columnconfigure(0, weight=1)
+        popup.columnconfigure(1, weight=1)
+
+        tk.Label(popup, text='Server IP address:').grid(row=0, column=0, padx=(10, 0), pady=5)
+        tk.Label(popup, text='Server Query Port:').grid(row=1, column=0, padx=(10, 0), pady=5)
+
+        ip_entry = tk.Entry(popup)
+        port_entry = tk.Entry(popup)
+        port_label = tk.Label(popup, text='(Query Port, not Game Port)')
+
+        ip_entry.grid(row=0, column=1, padx=(0, 15), pady=5)
+        port_entry.grid(row=1, column=1, padx=(0, 15), pady=5)
+        port_label.grid(row=2, column=0, columnspan=2, pady=5)
+
+        ok_button = ttk.Button(popup, text="OK", command=ok)
+        ok_button.grid(row=3, column=0, columnspan=2, pady=10)
+        popup.bind('<Return>', lambda e: ok_button.invoke())
+        popup.bind('<KP_Enter>', lambda e: ok_button.invoke())
+
+        popup.wait_window()
+
+        return popup.result
 
     def check_favorites(self, ip, queryPort):
         """
@@ -735,23 +790,24 @@ class App(ttk.Frame):
             # If "Server List" tab is selected
             self.refresh_all_button.grid(row=0, column=0, padx=5, pady=(0, 5), sticky='nsew')
             self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 5), sticky='nsew')
-            self.keypress_filter.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
-            self.entry.grid(row=3, column=0, padx=5, pady=5, sticky='ew')
-            self.mod_entry.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
-            self.map_combobox.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
-            self.version_combobox.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
-            self.show_favorites.grid(row=7, column=0, padx=5, pady=0, sticky='ew')
-            self.show_history.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
-            self.show_sponsored.grid(row=9, column=0, padx=5, pady=0, sticky='ew')
-            self.show_first_person.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
-            self.show_third_person.grid(row=11, column=0, padx=5, pady=0, sticky='ew')
-            self.show_not_passworded.grid(row=12, column=0, padx=5, pady=0, sticky='ew')
-            self.show_public.grid(row=13, column=0, padx=5, pady=0, sticky='ew')
-            self.show_private.grid(row=14, column=0, padx=5, pady=0, sticky='ew')
-            self.clear_filter.grid(row=15, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=16, column=0, padx=(20, 20), pady=5, sticky='ew')
-            self.join_server_button.grid(row=17, column=0, padx=5, pady=5, sticky='nsew')
-            self.favorite.grid(row=18, column=0, padx=5, pady=(0, 5), sticky='nsew')
+            self.favorite.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
+            self.keypress_filter.grid(row=3, column=0, padx=5, pady=0, sticky='ew')
+            self.entry.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
+            self.mod_entry.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
+            self.map_combobox.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
+            self.version_combobox.grid(row=7, column=0, padx=5, pady=5, sticky='ew')
+            self.show_favorites.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
+            self.show_history.grid(row=9, column=0, padx=5, pady=0, sticky='ew')
+            self.show_sponsored.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
+            self.show_first_person.grid(row=11, column=0, padx=5, pady=0, sticky='ew')
+            self.show_third_person.grid(row=12, column=0, padx=5, pady=0, sticky='ew')
+            self.show_not_passworded.grid(row=13, column=0, padx=5, pady=0, sticky='ew')
+            self.show_public.grid(row=14, column=0, padx=5, pady=0, sticky='ew')
+            self.show_private.grid(row=15, column=0, padx=5, pady=0, sticky='ew')
+            self.clear_filter.grid(row=16, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=17, column=0, padx=(20, 20), pady=5, sticky='ew')
+            self.add_server_button.grid(row=18, column=0, padx=5, pady=(5, 5), sticky='nsew')
+            self.join_server_button.grid(row=19, column=0, padx=5, pady=(0, 5), sticky='nsew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -1007,7 +1063,7 @@ class App(ttk.Frame):
         # Toggle real time filter update on every keypress
         self.keypress_filter_var = tk.BooleanVar(value=False)
         self.keypress_filter = ttk.Checkbutton(
-            self.widgets_frame, text='Filter on Keypress', variable=self.keypress_filter_var, command=self.toggle_filter_on_keypress
+            self.widgets_frame, text='Filter on Keypress', style='Small.TCheckbutton', variable=self.keypress_filter_var, command=self.toggle_filter_on_keypress
         )
 
         # Filter/Search Entry Box
@@ -1063,49 +1119,49 @@ class App(ttk.Frame):
         # Show Only Favorites Filter Checkbutton
         self.show_favorites_var = tk.BooleanVar()
         self.show_favorites = ttk.Checkbutton(
-            self.widgets_frame, text='Favorites', variable=self.show_favorites_var, command=lambda: filter_treeview(self.show_favorites_var.get())
+            self.widgets_frame, text='Favorites', style='Small.TCheckbutton', variable=self.show_favorites_var, command=lambda: filter_treeview(self.show_favorites_var.get())
         )
 
         # Show Only History Filter Checkbutton
         self.show_history_var = tk.BooleanVar()
         self.show_history = ttk.Checkbutton(
-            self.widgets_frame, text='History', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
+            self.widgets_frame, text='History', style='Small.TCheckbutton', variable=self.show_history_var, command=lambda: filter_treeview(self.show_history_var.get())
         )
 
         # Show Only Sponsored Filter Checkbutton
         self.show_sponsored_var = tk.BooleanVar()
         self.show_sponsored = ttk.Checkbutton(
-            self.widgets_frame, text='Sponsored', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
+            self.widgets_frame, text='Sponsored', style='Small.TCheckbutton', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
         )
 
         # Show Only First Person Filter Checkbutton
         self.show_first_person_var = tk.BooleanVar()
         self.show_first_person = ttk.Checkbutton(
-            self.widgets_frame, text='First Person Only', variable=self.show_first_person_var, command=lambda: filter_treeview(self.show_first_person_var.get())
+            self.widgets_frame, text='First Person Only', style='Small.TCheckbutton', variable=self.show_first_person_var, command=lambda: filter_treeview(self.show_first_person_var.get())
         )
 
         # Show Only Third Person Filter Checkbutton
         self.show_third_person_var = tk.BooleanVar()
         self.show_third_person = ttk.Checkbutton(
-            self.widgets_frame, text='Third Person Only', variable=self.show_third_person_var, command=lambda: filter_treeview(self.show_third_person_var.get())
+            self.widgets_frame, text='Third Person Only', style='Small.TCheckbutton', variable=self.show_third_person_var, command=lambda: filter_treeview(self.show_third_person_var.get())
         )
 
         # Show Only Not Passworded Filter Checkbutton
         self.show_not_passworded_var = tk.BooleanVar()
         self.show_not_passworded = ttk.Checkbutton(
-            self.widgets_frame, text='Hide Passworded', variable=self.show_not_passworded_var, command=lambda: filter_treeview(self.show_not_passworded_var.get())
+            self.widgets_frame, text='Hide Passworded', style='Small.TCheckbutton', variable=self.show_not_passworded_var, command=lambda: filter_treeview(self.show_not_passworded_var.get())
         )
 
         # Show Only Public Servers Filter Checkbutton
         self.show_public_var = tk.BooleanVar()
         self.show_public = ttk.Checkbutton(
-            self.widgets_frame, text='Public', variable=self.show_public_var, command=lambda: filter_treeview(self.show_public_var.get())
+            self.widgets_frame, text='Public', style='Small.TCheckbutton', variable=self.show_public_var, command=lambda: filter_treeview(self.show_public_var.get())
         )
 
         # Show Only Private Servers Filter Checkbutton
         self.show_private_var = tk.BooleanVar()
         self.show_private = ttk.Checkbutton(
-            self.widgets_frame, text='Private', variable=self.show_private_var, command=lambda: filter_treeview(self.show_private_var.get())
+            self.widgets_frame, text='Private', style='Small.TCheckbutton', variable=self.show_private_var, command=lambda: filter_treeview(self.show_private_var.get())
         )
 
         # Clear Filters button
@@ -1124,7 +1180,12 @@ class App(ttk.Frame):
         # Add/Remove Favorite Checkbuttons
         self.favorite_var = tk.BooleanVar()
         self.favorite = ttk.Checkbutton(
-            self.widgets_frame, text='Add/Remove Favorite', variable=self.favorite_var, command=self.toggle_favorite
+            self.widgets_frame, text='Add/Remove Favorite', style='Small.TCheckbutton', variable=self.favorite_var, command=self.toggle_favorite
+        )
+
+        # Manually Add Server Button
+        self.add_server_button = ttk.Button(
+            self.widgets_frame, text='Manually Add Server', command=manually_add_server
         )
 
         # Tab #2 (Server Info)
@@ -1419,7 +1480,7 @@ class App(ttk.Frame):
         )
         self.switch.grid(row=99, column=0, padx=0, pady=0, sticky='se')
         # Force Theme Switch to the bottom of the window
-        self.widgets_frame.grid_rowconfigure(19, weight=5)
+        self.widgets_frame.grid_rowconfigure(20, weight=5)
 
         # Sizegrip (Resize Window icon located at bottom right)
         self.sizegrip = ttk.Sizegrip(self)
@@ -1430,7 +1491,8 @@ class App(ttk.Frame):
             self.refresh_all_button,
             self.refresh_selected_button,
             self.clear_filter,
-            self.join_server_button
+            self.join_server_button,
+            self.add_server_button
         ]
         # List of grid used for enabling/disabling between Tab selection
         self.grid_list = [
@@ -1439,6 +1501,7 @@ class App(ttk.Frame):
             self.keypress_filter,
             self.clear_filter,
             self.join_server_button,
+            self.add_server_button,
             self.show_favorites,
             self.show_history,
             self.show_sponsored,
@@ -1493,6 +1556,7 @@ class App(ttk.Frame):
             self.clear_filter,
             self.separator,
             self.join_server_button,
+            self.add_server_button,
             self.favorite
         ]
         # Widgets to display on Tab 2
@@ -2913,7 +2977,7 @@ def a2s_query(ip, queryPort, update: bool=True):
             # This error is raised on Windows if the server IP is 0.0.0.0
             error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
             logging.error(error_message)
-            print(debug_message)
+            print(error_message)
             ping = ''
             info = None
     except IndexError as ie:
@@ -3258,6 +3322,58 @@ def load_fav_history():
     # Start new thread to query each server
     thread = Thread(target=query_item_list, args=(inserted_list,), daemon=True)
     thread.start()
+
+
+def manually_add_server():
+    """
+    Allows user to manually add a server to the Server List.
+    """
+    response = app.get_ip_port_prompt()
+
+    if not response:
+        return
+
+    ip, queryPort = response
+
+    treeview_ids = app.treeview.get_children() or [0]
+    inserted_list = []
+
+    for item_id in treeview_ids:
+        if item_id != 0:
+            item_values = app.treeview.item(item_id, 'values')
+            item_ip = item_values[5].split(':')[0]
+            item_queryPort = int(item_values[6])
+        else:
+            item_ip, item_queryPort = '', ''
+
+        if ip == item_ip and queryPort == item_queryPort:
+            # Select Item in Treeview and move into view
+            app.treeview.selection_set(item_id)
+            app.treeview.see(item_id)
+
+            info_message = f'Server is already in the List: {ip}:{queryPort}'
+            print(info_message)
+            logging.info(info_message)
+            app.MessageBoxInfo(message=info_message)
+            break
+    else:
+        # Insert row since IP & QueryPort not found in Treeview
+        treeview_values = ('', '', '', '', '', f'{ip}:', queryPort, '')
+        id = app.treeview.insert('', tk.END, values=treeview_values)
+        inserted_list.append(id)
+        # Add to Favorites
+        settings['favorites'][f'{ip}:{queryPort}'] = {'name': ''}
+        save_settings_to_json()
+        # Add to serverDict
+        serverDict[f'{ip}:{queryPort}'] = {'name': '', 'mods': [], 'version': 'Unknown'}
+        # Select Item in Treeview and move into view
+        app.treeview.selection_set(id)
+        app.treeview.see(id)
+
+    if inserted_list:
+        # Start new thread to query each server
+        thread = Thread(target=query_item_list, args=(inserted_list,), daemon=True)
+        thread.start()
 
 
 def query_item_list(itemList):
@@ -3731,6 +3847,22 @@ def is_app_installed():
     return os_install_dir == app_directory
 
 
+def set_initial_geometry():
+    """
+    Should help resolve issues with all widgets not fitting the
+    default windows size on different OS's and desktop environments
+    when manually setting geometry. If you don't hard code the
+    geometry, TKinter resizes the window every time a widget is
+    added or removed. Like when switching between Notebook tabs.
+    """
+    # Get the initial geometry of the main window
+    initial_geometry = root.winfo_geometry().split('+')[0]
+    # width, height = map(int, initial_geometry.split('x'))
+    # modified_geometry = f'{width}x{height - 10}'
+    # Set the geometry permanently
+    root.geometry(initial_geometry)
+
+
 if __name__ == '__main__':
 
     # Check user's platform
@@ -3772,7 +3904,8 @@ if __name__ == '__main__':
     app.pack(fill='both', expand=True)
 
     # Set initial window size
-    root.geometry('1280x675')
+    # root.geometry('1280x690')
+    app.after(1000, set_initial_geometry)
 
     # Warn user if not running on linux_os:
     if not linux_os and not windows_os:
