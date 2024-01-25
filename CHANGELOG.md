@@ -1,4 +1,9 @@
 # Changelog
+## 2.5.1 (2024-01-21)
+### Added
+* Fix Mods search box not filtering on FocusOut
+#
+
 ## 2.5.0 (2024-01-21)
 ### Added
 * Proper IP Address and Port sorting for the IP:GamePort column
