@@ -114,7 +114,7 @@ Run this installer script in PowerShell...
 
 * Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" module.
 
-### Manual
+### Manual / Portable
 
 Download the compressed (zip, tar, etc) version from the top right. Extract. Open terminal and launch using...
 
