@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import requests
+import socket
 import subprocess
 import sys
 import threading
@@ -33,7 +34,7 @@ logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
 version = '2.5.1'
-dzsa_api_servers = 'https://dayzsalauncher.com/api/v1/launcher/servers/dayz'
+dzsa_api_servers = 'https://dayzsalauncher.com/api/v2/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
 app_id = '221100'
@@ -262,6 +263,8 @@ class App(ttk.Frame):
             # that may be down or unable to get all of the server info, skip the following in
             # that scenario
             if serverDict_info.get('environment'):
+                time_accel = serverDict_info.get("timeAcceleration")
+                time_accel = f'{time_accel}{"x"}' if time_accel is not None else time_accel
                 self.server_info_text.set(
                     f'Name:    {serverDict_info.get("name")}\n\n'
                     f'Server OS:   {"Windows" if serverDict_info.get("environment") == "w" else "Linux":<25}'
@@ -271,7 +274,7 @@ class App(ttk.Frame):
                     f'Shard:   {serverDict_info.get("shard").title()}\n\n'
                     f'BattlEye:   {bool_to_yes_no(serverDict_info.get("battlEye")):<35}'
                     f'First Person Only:   {bool_to_yes_no(serverDict_info.get("firstPersonOnly")):<24}'
-                    f'Time Acceleration:   {serverDict_info.get("timeAcceleration")}{"x":<28}'
+                    f'Time Acceleration:   {str(time_accel):<28}'
                     f'Last Joined:   {last_joined:<25}'
                 )
 
@@ -686,6 +689,8 @@ class App(ttk.Frame):
         popup.bind('<Return>', lambda e: ok_button.invoke())
         popup.bind('<KP_Enter>', lambda e: ok_button.invoke())
 
+        ip_entry.focus_set()
+
         popup.wait_window()
 
         return popup.result
@@ -754,7 +759,9 @@ class App(ttk.Frame):
         self.treeview.selection_set([])
         self.show_favorites_var.set(value=False)
         self.show_history_var.set(value=False)
-        self.show_sponsored_var.set(value=False)
+        # self.show_sponsored_var.set(value=False)
+        self.show_modded_var.set(value=False)
+        self.show_not_modded_var.set(value=False)
         self.show_first_person_var.set(value=False)
         self.show_third_person_var.set(value=False)
         self.show_not_passworded_var.set(value=False)
@@ -798,16 +805,18 @@ class App(ttk.Frame):
             self.version_combobox.grid(row=7, column=0, padx=5, pady=5, sticky='ew')
             self.show_favorites.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
             self.show_history.grid(row=9, column=0, padx=5, pady=0, sticky='ew')
-            self.show_sponsored.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
-            self.show_first_person.grid(row=11, column=0, padx=5, pady=0, sticky='ew')
-            self.show_third_person.grid(row=12, column=0, padx=5, pady=0, sticky='ew')
-            self.show_not_passworded.grid(row=13, column=0, padx=5, pady=0, sticky='ew')
-            self.show_public.grid(row=14, column=0, padx=5, pady=0, sticky='ew')
-            self.show_private.grid(row=15, column=0, padx=5, pady=0, sticky='ew')
-            self.clear_filter.grid(row=16, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=17, column=0, padx=(20, 20), pady=5, sticky='ew')
-            self.add_server_button.grid(row=18, column=0, padx=5, pady=(5, 5), sticky='nsew')
-            self.join_server_button.grid(row=19, column=0, padx=5, pady=(0, 5), sticky='nsew')
+            # self.show_sponsored.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
+            self.show_first_person.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
+            self.show_third_person.grid(row=11, column=0, padx=5, pady=0, sticky='ew')
+            self.show_modded.grid(row=12, column=0, padx=5, pady=0, sticky='ew')
+            self.show_not_modded.grid(row=13, column=0, padx=5, pady=0, sticky='ew')
+            self.show_not_passworded.grid(row=14, column=0, padx=5, pady=0, sticky='ew')
+            self.show_public.grid(row=15, column=0, padx=5, pady=0, sticky='ew')
+            self.show_private.grid(row=16, column=0, padx=5, pady=0, sticky='ew')
+            self.clear_filter.grid(row=17, column=0, padx=5, pady=5, sticky='nsew')
+            self.separator.grid(row=18, column=0, padx=(20, 20), pady=5, sticky='ew')
+            self.add_server_button.grid(row=19, column=0, padx=5, pady=(5, 5), sticky='nsew')
+            self.join_server_button.grid(row=20, column=0, padx=5, pady=(0, 5), sticky='nsew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -1129,10 +1138,10 @@ class App(ttk.Frame):
         )
 
         # Show Only Sponsored Filter Checkbutton
-        self.show_sponsored_var = tk.BooleanVar()
-        self.show_sponsored = ttk.Checkbutton(
-            self.widgets_frame, text='Sponsored', style='Small.TCheckbutton', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
-        )
+        # self.show_sponsored_var = tk.BooleanVar()
+        # self.show_sponsored = ttk.Checkbutton(
+        #     self.widgets_frame, text='Sponsored', style='Small.TCheckbutton', variable=self.show_sponsored_var, command=lambda: filter_treeview(self.show_sponsored_var.get())
+        # )
 
         # Show Only First Person Filter Checkbutton
         self.show_first_person_var = tk.BooleanVar()
@@ -1144,6 +1153,18 @@ class App(ttk.Frame):
         self.show_third_person_var = tk.BooleanVar()
         self.show_third_person = ttk.Checkbutton(
             self.widgets_frame, text='Third Person Only', style='Small.TCheckbutton', variable=self.show_third_person_var, command=lambda: filter_treeview(self.show_third_person_var.get())
+        )
+
+        # Show Only Modded Filter Checkbutton
+        self.show_modded_var = tk.BooleanVar()
+        self.show_modded = ttk.Checkbutton(
+            self.widgets_frame, text='Modded', style='Small.TCheckbutton', variable=self.show_modded_var, command=lambda: filter_treeview(self.show_modded_var.get())
+        )
+
+        # Show Only Not Modded Filter Checkbutton
+        self.show_not_modded_var = tk.BooleanVar()
+        self.show_not_modded = ttk.Checkbutton(
+            self.widgets_frame, text='Not Modded', style='Small.TCheckbutton', variable=self.show_not_modded_var, command=lambda: filter_treeview(self.show_not_modded_var.get())
         )
 
         # Show Only Not Passworded Filter Checkbutton
@@ -1452,8 +1473,10 @@ class App(ttk.Frame):
         self.console.tag_configure('stderr', foreground='red')
         self.console.bind('<Control-a>', lambda e: self.selectAllItemsText(self.console))
 
-        sys.stdout = ConsoleGuiOutput(self.console, 'stdout')
-        sys.stderr = ConsoleGuiOutput(self.console, 'stderr')
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        sys.stdout = ConsoleGuiOutput(self.console, 'stdout', original_stdout)
+        sys.stderr = ConsoleGuiOutput(self.console, 'stderr', original_stderr)
 
         # Tab #5 (Settings)
         self.tab_5 = ttk.Frame(self.notebook)
@@ -1480,7 +1503,7 @@ class App(ttk.Frame):
         )
         self.switch.grid(row=99, column=0, padx=0, pady=0, sticky='se')
         # Force Theme Switch to the bottom of the window
-        self.widgets_frame.grid_rowconfigure(20, weight=5)
+        self.widgets_frame.grid_rowconfigure(21, weight=5)
 
         # Sizegrip (Resize Window icon located at bottom right)
         self.sizegrip = ttk.Sizegrip(self)
@@ -1504,7 +1527,9 @@ class App(ttk.Frame):
             self.add_server_button,
             self.show_favorites,
             self.show_history,
-            self.show_sponsored,
+            # self.show_sponsored,
+            self.show_modded,
+            self.show_not_modded,
             self.show_first_person,
             self.show_third_person,
             self.show_not_passworded,
@@ -1547,7 +1572,9 @@ class App(ttk.Frame):
             self.version_combobox,
             self.show_favorites,
             self.show_history,
-            self.show_sponsored,
+            # self.show_sponsored,
+            self.show_modded,
+            self.show_not_modded,
             self.show_first_person,
             self.show_third_person,
             self.show_not_passworded,
@@ -1594,10 +1621,11 @@ class App(ttk.Frame):
 
 
 class ConsoleGuiOutput(object):
-    def __init__(self, widget, tag):
+    def __init__(self, widget, tag, original_stream):
         self.widget = widget
         self.tag = tag
         self.max_lines = 1001
+        self.original_stream = original_stream
 
     def write(self, stdstr):
         self.widget.config(state='normal')
@@ -1622,7 +1650,7 @@ class ConsoleGuiOutput(object):
                 sys.__stderr__.write(stdstr)
 
     def flush(self):
-        pass
+        self.original_stream.flush()
 
 
 class SettingsMenu:
@@ -1906,9 +1934,12 @@ def server_pings(id, server_info):
     since some servers block normal pings, perform an a2s query and use
     it's ping/response time.
     """
-    ip = server_info[5].split(':')[0]
+    ip, gamePort = server_info[5].split(':')
     queryPort = server_info[6]
     ping = get_ping_cmd(ip)
+
+    if not ping:
+        ping = get_ping_gameport(ip, int(gamePort))
 
     if not ping:
         ping, _ = a2s_query(ip, queryPort)
@@ -1958,7 +1989,9 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Gets values from Filter checkboxes
     show_favorites = app.show_favorites_var.get()
     show_history = app.show_history_var.get()
-    show_sponsored = app.show_sponsored_var.get()
+    # show_sponsored = app.show_sponsored_var.get()
+    show_modded = app.show_modded_var.get()
+    show_not_modded = app.show_not_modded_var.get()
     show_first_person = app.show_first_person_var.get()
     show_third_person = app.show_third_person_var.get()
     show_not_passworded = app.show_not_passworded_var.get()
@@ -1968,8 +2001,8 @@ def filter_treeview(chkbox_not_toggled: bool=True):
     # Check if ANY of the bools above are true. Then hides/detaches Treeview items
     # that do not match. Stores hidden items in the global 'hidden_items' list.
     bool_filter_list = [
-        text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_sponsored,
-        show_first_person, show_third_person, show_not_passworded, show_public, show_private
+        text_entered, map_selected, version_selected, mods_entered, show_favorites, show_history, show_modded, #show_sponsored,
+        show_not_modded, show_first_person, show_third_person, show_not_passworded, show_public, show_private
     ]
     if any(bool_filter_list):
         # Clear Server Info tab
@@ -2013,13 +2046,19 @@ def filter_treeview(chkbox_not_toggled: bool=True):
             if show_history and not settings.get('history').get(f'{ip}:{queryPort}'):
                 hide_treeview_item(item_id)
 
-            if show_sponsored and not serverDict[f'{ip}:{queryPort}'].get('sponsor'):
-                hide_treeview_item(item_id)
+            # if show_sponsored and not serverDict[f'{ip}:{queryPort}'].get('sponsor'):
+            #     hide_treeview_item(item_id)
 
             if show_first_person and not serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly'):
                 hide_treeview_item(item_id)
 
             if show_third_person and (serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly') == None or serverDict[f'{ip}:{queryPort}'].get('firstPersonOnly')):
+                hide_treeview_item(item_id)
+
+            if show_modded and not serverDict[f'{ip}:{queryPort}'].get('mods'):
+                hide_treeview_item(item_id)
+
+            if show_not_modded and (serverDict[f'{ip}:{queryPort}'].get('mods') or not serverDict[f'{ip}:{queryPort}'].get('map')):
                 hide_treeview_item(item_id)
 
             if show_not_passworded and serverDict[f'{ip}:{queryPort}'].get('password'):
@@ -2061,8 +2100,13 @@ def generate_serverDict(servers):
     Generate the serverDict from the DZSA API. Also, adds each map
     to the dayz_maps list which is used to populate the Map combobox
     """
-    for server in servers:
+    server_to_exclude = []
+    for index, server in enumerate(servers):
         ip = server.get("endpoint").get("ip")
+        if ip == '0.0.0.0':
+            server_to_exclude.append(index)
+            print(f'Removed server due to invalid IP: {server}')
+            continue
         queryPort = server.get("endpoint").get("port")
         server_map = server.get('map').title() if server.get('map').lower() != 'pnw' else 'PNW'
         dayz_version = server.get('version')
@@ -2109,6 +2153,9 @@ def generate_serverDict(servers):
     # Sort and set values for the dayz_versions list
     app.dayz_versions = sorted(app.dayz_versions, key=str.casefold)
     app.version_combobox['values'] = app.dayz_versions
+
+    for server in server_to_exclude:
+        servers.pop(server)
 
 
 def refresh_servers():
@@ -3043,6 +3090,40 @@ def a2s_mods(ip, queryPort):
     return mods_dict
 
 
+def a2s_players(ip, queryPort):
+    """
+    Queries the server directly to get total number of players.
+    Some servers began "spoofing" the player_count entry in the
+    "a2s_info" queries.
+
+    Source: https://github.com/Yepoleb/python-a2s
+    """
+    serverDict_info = serverDict.get(f'{ip}:{queryPort}')
+    server_name = serverDict_info.get('name')
+    reported_players = serverDict_info.get('players')
+    max_players = serverDict_info.get('maxPlayers')
+
+    try:
+        actual_player_count = len(a2s.players((ip, int(queryPort))))
+        debug_message = None
+        if (reported_players > max_players) or (abs(reported_players - actual_player_count) > 10 and reported_players > actual_player_count):
+            # Disabled printing in this function due to calling ThreadPoolExecutor in
+            # Main thread and redirecting print/stdout to the GUI. This caused the
+            # Executor to hang.
+            debug_message = (
+                f'Server is reporting an inaccurate player count or proxy cache is out of sync. '
+                f'Claims: {reported_players} vs Actual: {actual_player_count} - {ip} - {queryPort} - {server_name}'
+            )
+    except TimeoutError:
+        debug_message = f'Timed out getting player count from Server {ip} using QueryPort {queryPort}'
+        actual_player_count = reported_players if reported_players < max_players else 0
+
+    logging.debug(debug_message)
+    serverDict[f'{ip}:{queryPort}']['players'] = actual_player_count
+
+    return actual_player_count, debug_message
+
+
 def get_dzsa_mods(ip, queryPort):
     """
     Use DZSAL Single Server Query API as a backup in the event a2s_mods
@@ -3095,6 +3176,42 @@ def get_ping_cmd(ip):
         logging.error(error_message)
         print(error_message)
         return None
+
+
+def get_ping_gameport(ip, gamePort):
+    """
+    Get the response time of an initial query to the server's Game Port.
+    Many servers are now behind proxies, cache the Steam Queries, (which
+    is why you appear to have low pings to servers in other countries)
+    and they also block normal ICMP pings. This will give us a more
+    accurate "Ping" time to those servers.
+    """
+    byte_data =  (
+        b' \x00\x01\x08\x0e\xdc\xff\x1f\x01\x00\x00\x00\x01\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\xae\x91\xe1\xeeDayZ` '
+    )
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(1)
+        try:
+            s.connect((ip, gamePort))
+
+            start_time = time.time()
+            s.sendall(byte_data)
+            response = s.recv(1024)
+            end_time = time.time()
+
+            ping = round((end_time - start_time) * 1000)
+
+        except ConnectionRefusedError:
+            end_time = time.time()
+            ping = round((end_time - start_time) * 1000)
+            print(f'({ip}, {gamePort}) - Connection Refused Ping: {ping} ms')
+
+        except socket.timeout:
+            ping = ''
+
+    return ping
 
 
 def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queue):
@@ -3320,7 +3437,7 @@ def load_fav_history():
     if treeview_ids == [0]:
         treeview_sort_column(app.treeview, 'Name', False)
     # Start new thread to query each server
-    thread = Thread(target=query_item_list, args=(inserted_list,), daemon=True)
+    thread = Thread(target=query_item_list, args=(inserted_list, True), daemon=True)
     thread.start()
 
 
@@ -3376,7 +3493,7 @@ def manually_add_server():
         thread.start()
 
 
-def query_item_list(itemList):
+def query_item_list(itemList, loading_favs=False):
     """
     Directly query each server in Favorites/History then update the
     Server List treeview and serverDict. Updated Favorite/History name
@@ -3408,10 +3525,13 @@ def query_item_list(itemList):
             dayz_maps_updated = False
             version_updated = False
             fav_updated = False
+            # Add delays when also performing a2s player query. Seems we may be getting
+            # rate limited when rapidly querying the server multiple times.
+            delay_mod_query = False
             for future in as_completed(futures_dict):
                 id = futures_dict[future].get('id')
                 item_values = futures_dict[future].get('values')
-                ip = item_values[5].split(':')[0]
+                ip, gamePort = item_values[5].split(':')
                 queryPort = item_values[6]
                 stored_name = item_values[1]
                 ping, info = future.result()
@@ -3421,10 +3541,27 @@ def query_item_list(itemList):
                     players = info.player_count
                     maxPlayers = info.max_players
                     gamePort = info.port
-                    time = info.keywords[-5:]
+                    gametime = info.keywords[-5:]
                     dayz_version = info.version
 
-                    treeview_values = (server_map, server_name, players, maxPlayers, time, f'{ip}:{gamePort}', queryPort, ping)
+                    # Only perform player query and add delays when not loading favorites
+                    # Makes load times much faster and most people probably aren't favoriting
+                    # those servers anyway. If they are, then they probably don't care about
+                    # the fake count. They can still find out if the use "Refresh Selected".
+                    if players > maxPlayers or (players > 20 and not loading_favs):
+                        time.sleep(0.25)
+                        delay_mod_query = True
+                        players, message = a2s_players(ip, queryPort)
+                        serverDict[f'{ip}:{queryPort}']['players'] = players
+                        if message:
+                            print(message)
+
+                    gamePortPing = get_ping_gameport(ip, gamePort) if ping < 60 else None
+                    if gamePortPing:
+                        print(f'Query Port Ping = {ping}. Using Game Port Ping: {gamePortPing} - {server_name}')
+                        ping = gamePortPing
+
+                    treeview_values = (server_map, server_name, players, maxPlayers, gametime, f'{ip}:{gamePort}', queryPort, ping)
                     app.treeview.item(id, text='', values=treeview_values)
 
                     # Generate Map list for Filter Combobox
@@ -3446,6 +3583,8 @@ def query_item_list(itemList):
                         fav_updated = True
 
                     # Add server to executer to query server mods
+                    if delay_mod_query:
+                        time.sleep(0.25)
                     mod_future = executor.submit(a2s_mods, ip, queryPort)
 
                 elif not serverDict.get(f'{ip}:{queryPort}'):
@@ -3453,6 +3592,11 @@ def query_item_list(itemList):
 
                 # Update ping if server is down or connection timed out
                 elif serverDict.get(f'{ip}:{queryPort}'):
+                    # Some servers block both pings and Query Port. Try pinging this way
+                    if gamePort:
+                        ping = get_ping_gameport(ip, int(gamePort))
+                        if ping:
+                            print(f'Other pings failed. Using Game Port Ping: {ping} - {ip}:{queryPort}')
                     item_values = list(item_values)
                     item_values[7] = ping
                     app.treeview.item(id, text='', values=item_values)
@@ -3498,6 +3642,9 @@ def bool_to_yes_no(bool):
     Used for populating the Server Info and displaying Yes/No instead
     of True/False.
     """
+    if bool is None:
+        return 'Unknown'
+
     bools = ('No','Yes')
     return bools[bool]
 

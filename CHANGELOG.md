@@ -1,4 +1,20 @@
 # Changelog
+## 2.6.0 (2024-01-31)
+### Added
+* A2S Players query to check for servers that are spoofing their player count.
+* Alternate ping method used for getting a more accurate ping to the server if it appears the server is behind a proxy or caching queries.
+* Filter by Modded and Not Modded servers.
+* Set focus to the IP Address when opening the "Manually Add Server" popup.
+* Check for servers with an IP of 0.0.0.0 and remove them from the list.
+
+### Changed
+* Removed the Sponsered Filter.
+* Switched to DZSAL API v2.
+
+### Fixed
+* Formatting when displaying Server Info if the Time Acceleration was None.
+#
+
 ## 2.5.1 (2024-01-21)
 ### Added
 * Fix Mods search box not filtering on FocusOut
