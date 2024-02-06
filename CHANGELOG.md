@@ -1,4 +1,17 @@
 # Changelog
+## 2.7.0 (2024-02-05)
+### Added
+* Search/Filter entry box for Server Mods and Installed Mods
+
+### Changed
+* Adjusted the size of some padding and button sizes.
+* Filter Server List on FocusOut to Tab press
+
+### Fixed
+* Typo in the header.
+* Handle OSError Exception during Alternate Ping method. 
+#
+
 ## 2.6.0 (2024-01-31)
 ### Added
 * A2S Players query to check for servers that are spoofing their player count.
