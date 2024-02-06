@@ -53,7 +53,7 @@ main_branch_ps1 = 'https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_
 
 # Header used in API request
 headers = {
-    'User-Agent': f'({appName}/{version}'
+    'User-Agent': f'{appName}/{version}'
 }
 
 # Default settings
@@ -77,6 +77,8 @@ modDict = {}
 hashDict = {}
 
 hidden_items = set()
+hidden_items_server_mods = set()
+hidden_items_installed_mods = set()
 
 # Prevent multiple stdout/prints from ending up on the same line.
 stdout_lock = threading.Lock()
@@ -256,6 +258,8 @@ class App(ttk.Frame):
 
             self.check_favorites(ip, queryPort)
 
+            self.filter_server_mods_text.set('')
+
             serverDict_info = serverDict.get(f'{ip}:{queryPort}')
 
             last_joined = self.check_history(ip, queryPort)
@@ -284,6 +288,7 @@ class App(ttk.Frame):
             else:
                 # Clear the existing info and treeview on the Server Info tab to prevent previously
                 # selected server info from being displayed for a newly selected server that is down
+                self.filter_server_mods_text.set('')
                 self.server_info_text.set('')
                 self.server_mods_tv.delete(*self.server_mods_tv.get_children())
 
@@ -749,6 +754,7 @@ class App(ttk.Frame):
         self.version_combobox.set(self.default_version_combobox_text)
 
         # Clear Server Info tab
+        self.filter_server_mods_text.set('')
         self.server_info_text.set('')
         self.server_mods_tv.delete(*self.server_mods_tv.get_children())
 
@@ -796,13 +802,13 @@ class App(ttk.Frame):
         if selected_tab == 0:
             # If "Server List" tab is selected
             self.refresh_all_button.grid(row=0, column=0, padx=5, pady=(0, 5), sticky='nsew')
-            self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(5, 5), sticky='nsew')
+            self.refresh_selected_button.grid(row=1, column=0, padx=5, pady=(0, 5), sticky='nsew')
             self.favorite.grid(row=2, column=0, padx=5, pady=0, sticky='ew')
             self.keypress_filter.grid(row=3, column=0, padx=5, pady=0, sticky='ew')
-            self.entry.grid(row=4, column=0, padx=5, pady=5, sticky='ew')
-            self.mod_entry.grid(row=5, column=0, padx=5, pady=5, sticky='ew')
-            self.map_combobox.grid(row=6, column=0, padx=5, pady=5, sticky='ew')
-            self.version_combobox.grid(row=7, column=0, padx=5, pady=5, sticky='ew')
+            self.entry.grid(row=4, column=0, padx=5, pady=(5, 4), sticky='ew')
+            self.mod_entry.grid(row=5, column=0, padx=5, pady=(3, 4), sticky='ew')
+            self.map_combobox.grid(row=6, column=0, padx=5, pady=(3, 4), sticky='ew')
+            self.version_combobox.grid(row=7, column=0, padx=5, pady=(3, 5), sticky='ew')
             self.show_favorites.grid(row=8, column=0, padx=5, pady=0, sticky='ew')
             self.show_history.grid(row=9, column=0, padx=5, pady=0, sticky='ew')
             # self.show_sponsored.grid(row=10, column=0, padx=5, pady=0, sticky='ew')
@@ -814,9 +820,9 @@ class App(ttk.Frame):
             self.show_public.grid(row=15, column=0, padx=5, pady=0, sticky='ew')
             self.show_private.grid(row=16, column=0, padx=5, pady=0, sticky='ew')
             self.clear_filter.grid(row=17, column=0, padx=5, pady=5, sticky='nsew')
-            self.separator.grid(row=18, column=0, padx=(20, 20), pady=5, sticky='ew')
-            self.add_server_button.grid(row=19, column=0, padx=5, pady=(5, 5), sticky='nsew')
-            self.join_server_button.grid(row=20, column=0, padx=5, pady=(0, 5), sticky='nsew')
+            self.separator.grid(row=18, column=0, padx=(20, 20), pady=2, sticky='ew')
+            self.add_server_button.grid(row=19, column=0, padx=5, pady=(5, 0), sticky='nsew')
+            self.join_server_button.grid(row=20, column=0, padx=5, pady=(5, 3), sticky='nsew')
 
             # Hide widgets from all tabs except tab_1
             self.hide_tab_widgets(self.tab_1_widgets)
@@ -826,29 +832,31 @@ class App(ttk.Frame):
             # Hide widgets from all tabs except tab_2
             self.hide_tab_widgets(self.tab_2_widgets)
 
-            self.refresh_info_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.manual_label.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.load_workshop_label.grid(row=2, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.refresh_info_label.grid(row=3, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.method_separator.grid(row=4, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
-            self.auto_label.grid(row=5, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.auto_sub_button.grid(row=6, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.auto_sub_label.grid(row=7, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.steam_download_button.grid(row=8, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.steam_download_label.grid(row=9, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.method_separator2.grid(row=10, column=0, padx=(20, 20), pady=(0, 15), sticky='ew')
-            self.force_mod_update_server_button.grid(row=11, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.server_mods_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.refresh_info_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.manual_label.grid(row=2, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.load_workshop_label.grid(row=3, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.refresh_info_label.grid(row=4, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.method_separator.grid(row=5, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
+            self.auto_label.grid(row=6, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.auto_sub_button.grid(row=7, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.auto_sub_label.grid(row=8, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.steam_download_button.grid(row=9, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.steam_download_label.grid(row=10, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.method_separator2.grid(row=11, column=0, padx=(20, 20), pady=(0, 15), sticky='ew')
+            self.force_mod_update_server_button.grid(row=12, column=0, padx=5, pady=(0, 10), sticky='nsew')
 
         elif selected_tab == 2:
             # If "Installed Mods" tab is selected
             # Hide widgets from all tabs except tab_3
             self.hide_tab_widgets(self.tab_3_widgets)
 
-            self.refresh_mod_button.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
-            self.total_label.grid(row=1, column=0, padx=5, pady=10, sticky='nsew')
-            self.verify_separator.grid(row=2, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
-            self.verify_integrity_button.grid(row=3, column=0, padx=5, pady=(5 , 10), sticky='nsew')
-            self.force_mod_update_installed_button.grid(row=4, column=0, padx=5, pady=(5 , 10), sticky='nsew')
+            self.installed_mods_entry.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.refresh_mod_button.grid(row=1, column=0, padx=5, pady=(0, 10), sticky='nsew')
+            self.total_label.grid(row=2, column=0, padx=5, pady=10, sticky='nsew')
+            self.verify_separator.grid(row=3, column=0, padx=(20, 20), pady=(0, 10), sticky='ew')
+            self.verify_integrity_button.grid(row=4, column=0, padx=5, pady=(5 , 10), sticky='nsew')
+            self.force_mod_update_installed_button.grid(row=5, column=0, padx=5, pady=(5 , 10), sticky='nsew')
 
         elif selected_tab == 3:
             # If "Console" tab is selected
@@ -975,10 +983,10 @@ class App(ttk.Frame):
         """
         if self.keypress_filter_var.get():
             self.keypress_trace_id = self.filter_text.trace_add("write", lambda *args: filter_treeview())
-            self.entry.unbind('<FocusOut>', self.focus_trace_id)
+            self.entry.unbind('<Tab>', self.focus_trace_id)
         else:
             self.filter_text.trace_remove("write", self.keypress_trace_id)
-            self.focus_trace_id = self.entry.bind('<FocusOut>', lambda e: filter_treeview())
+            self.focus_trace_id = self.entry.bind('<Tab>', lambda e: filter_treeview())
 
     def setup_widgets(self):
         # Create a Frame for input widgets
@@ -1086,7 +1094,7 @@ class App(ttk.Frame):
         # if the user wants to turn it off. When enabled, can cause lag when typing
         # when searching a large server list.
         # self.keypress_trace_id = self.filter_text.trace_add("write", lambda *args: filter_treeview())
-        self.focus_trace_id = self.entry.bind('<FocusOut>', lambda e: filter_treeview())
+        self.focus_trace_id = self.entry.bind('<Tab>', lambda e: filter_treeview())
 
         # Filter/Search Entry Box
         self.mod_text = tk.StringVar()
@@ -1095,7 +1103,7 @@ class App(ttk.Frame):
         self.mod_entry = ttk.Entry(self.widgets_frame, textvariable=self.mod_text)
         self.mod_entry.insert(0, self.default_mod_text)
         self.mod_entry.bind('<FocusIn>', lambda e: (self.mod_entry.delete('0', 'end')) if self.mod_entry.get() == self.default_mod_text else None)
-        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else filter_treeview())
+        self.mod_entry.bind('<FocusOut>', lambda e: (self.mod_entry.insert(0, self.default_mod_text)) if self.mod_entry.get() == '' else None)
         self.mod_entry.bind('<Return>', lambda e: filter_treeview())
         self.mod_entry.bind('<KP_Enter>', lambda e: filter_treeview())
 
@@ -1216,6 +1224,11 @@ class App(ttk.Frame):
         self.tab_2.columnconfigure(0, weight=1)
         self.tab_2.rowconfigure(0, weight=5)
         self.tab_2.rowconfigure(1, weight=3)
+
+        # Filter/Search Server Mods Entry Box
+        self.filter_server_mods_text = tk.StringVar()
+        self.server_mods_entry = ttk.Entry(self.widgets_frame, textvariable=self.filter_server_mods_text)
+        self.filter_server_mods_text.trace_add("write", lambda *args: filter_server_mods_treeview())
 
         # Refresh Info Accentbutton
         self.refresh_info_button = ttk.Button(
@@ -1427,6 +1440,11 @@ class App(ttk.Frame):
         self.installed_mods_tv.column('Steam Workshop / Download URL', width=325)
         self.installed_mods_tv.column('Size (MBs)', width=75)
 
+        # Filter/Search Installed Mod Entry Box
+        self.filter_installed_mods_text = tk.StringVar()
+        self.installed_mods_entry = ttk.Entry(self.widgets_frame, textvariable=self.filter_installed_mods_text)
+        self.filter_installed_mods_text.trace_add("write", lambda *args: filter_installed_mods_treeview())
+
         # Refresh Mods Accentbutton
         self.refresh_mod_button = ttk.Button(
             self.widgets_frame, text='Refresh Mods', style='Accent.TButton', command=generate_mod_treeview
@@ -1494,7 +1512,7 @@ class App(ttk.Frame):
 
         # Open DayZ Py Launcher installtion directory Accentbutton
         self.open_install_button = ttk.Button(
-            self.widgets_frame, text='Install Directory', style='Accent.TButton', command=self.open_install_dir
+            self.widgets_frame, width=19, text='Install Directory', style='Accent.TButton', command=self.open_install_dir
         )
 
         # Switch (Toggle Dark/Light Mode)
@@ -1542,6 +1560,7 @@ class App(ttk.Frame):
             self.version_combobox,
             self.separator,
             self.refresh_mod_button,
+            self.server_mods_entry,
             self.refresh_info_button,
             self.total_label,
             self.verify_separator,
@@ -1559,7 +1578,8 @@ class App(ttk.Frame):
             self.version_label,
             self.open_install_button,
             self.force_mod_update_server_button,
-            self.force_mod_update_installed_button
+            self.force_mod_update_installed_button,
+            self.installed_mods_entry
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -1588,6 +1608,7 @@ class App(ttk.Frame):
         ]
         # Widgets to display on Tab 2
         self.tab_2_widgets = [
+            self.server_mods_entry,
             self.refresh_info_button,
             self.manual_label,
             self.load_workshop_label,
@@ -1607,7 +1628,8 @@ class App(ttk.Frame):
             self.total_label,
             self.verify_separator,
             self.verify_integrity_button,
-            self.force_mod_update_installed_button
+            self.force_mod_update_installed_button,
+            self.installed_mods_entry
         ]
 
         # Widgets to display on Tab 4
@@ -1938,7 +1960,7 @@ def server_pings(id, server_info):
     queryPort = server_info[6]
     ping = get_ping_cmd(ip)
 
-    if not ping:
+    if not ping and gamePort:
         ping = get_ping_gameport(ip, int(gamePort))
 
     if not ping:
@@ -1947,6 +1969,9 @@ def server_pings(id, server_info):
 
 
 def filter_treeview(chkbox_not_toggled: bool=True):
+    """
+    Used to filter out servers in the Server List tab.
+    """
     global hidden_items
 
     # Gets values from Entry box
@@ -2072,6 +2097,64 @@ def filter_treeview(chkbox_not_toggled: bool=True):
                 hide_treeview_item(item_id)
 
 
+def filter_server_mods_treeview():
+    """
+    Used to filter out mod in the Server Mods tab.
+    """
+    global hidden_items_server_mods
+
+    filter_text = app.server_mods_entry.get()
+
+    text_entered = False
+    if filter_text != '':
+        text_entered = True
+
+    restore_server_mods_treeview()
+
+    # Check if ANY of the bools above are true. Then hides/detaches Treeview items
+    # that do not match. Stores hidden items in the global 'hidden_items_server_mods' list.
+    bool_filter_list = [text_entered]
+
+    if any(bool_filter_list):
+
+        for item_id in app.server_mods_tv.get_children():
+            mod_values = app.server_mods_tv.item(item_id, 'values')
+            mod_name = mod_values[0]
+            workshop_id = mod_values[1]
+
+            if text_entered and filter_text.lower() not in mod_name.lower() and filter_text not in workshop_id:
+                hide_server_mods_treeview_item(item_id)
+
+
+def filter_installed_mods_treeview():
+    """
+    Used to filter out mod in the Installed Mods tab.
+    """
+    global hidden_items_installed_mods
+
+    filter_text = app.installed_mods_entry.get()
+
+    text_entered = False
+    if filter_text != '':
+        text_entered = True
+
+    restore_installed_mods_treeview()
+
+    # Check if ANY of the bools above are true. Then hides/detaches Treeview items
+    # that do not match. Stores hidden items in the global 'hidden_items_installed_mods' list.
+    bool_filter_list = [text_entered]
+
+    if any(bool_filter_list):
+
+        for item_id in app.installed_mods_tv.get_children():
+            mod_values = app.installed_mods_tv.item(item_id, 'values')
+            mod_name = mod_values[1]
+            workshop_id = mod_values[2]
+
+            if text_entered and filter_text.lower() not in mod_name.lower() and filter_text not in workshop_id:
+                hide_installed_mods_treeview_item(item_id)
+
+
 def hide_treeview_item(item_id):
     """
     This hides/detaches Treeview items that do not match.
@@ -2080,6 +2163,26 @@ def hide_treeview_item(item_id):
     global hidden_items
     app.treeview.detach(item_id)
     hidden_items.add(item_id)
+
+
+def hide_server_mods_treeview_item(item_id):
+    """
+    This hides/detaches Installed Mods items that do not match.
+    Stores hidden items in the global 'hidden_items_server_mods' list.
+    """
+    global hidden_items_server_mods
+    app.server_mods_tv.detach(item_id)
+    hidden_items_server_mods.add(item_id)
+
+
+def hide_installed_mods_treeview_item(item_id):
+    """
+    This hides/detaches Installed Mods items that do not match.
+    Stores hidden items in the global 'hidden_items_installed_mods' list.
+    """
+    global hidden_items_installed_mods
+    app.installed_mods_tv.detach(item_id)
+    hidden_items_installed_mods.add(item_id)
 
 
 def restore_treeview():
@@ -2093,6 +2196,30 @@ def restore_treeview():
 
     treeview_sort_column(app.treeview, 'Players', True)
     hidden_items.clear()
+
+
+def restore_server_mods_treeview():
+    """
+    This hides/detaches Installed Mods items that do not match.
+    Stores hidden items in the global 'hidden_items_server_mods' list.
+    """
+    global hidden_items_server_mods
+    for item_id in hidden_items_server_mods:
+        app.server_mods_tv.reattach(item_id, '', 'end')
+
+    hidden_items_server_mods.clear()
+
+
+def restore_installed_mods_treeview():
+    """
+    This hides/detaches Installed Mods items that do not match.
+    Stores hidden items in the global 'hidden_items_installed_mods' list.
+    """
+    global hidden_items_installed_mods
+    for item_id in hidden_items_installed_mods:
+        app.installed_mods_tv.reattach(item_id, '', 'end')
+
+    hidden_items_installed_mods.clear()
 
 
 def generate_serverDict(servers):
@@ -2363,13 +2490,13 @@ def remove_broken_symlinks(symlink_dir):
     """
     hashDict.clear()
     # Remove old symlinks
-    with os.scandir(settings.get('dayz_dir')) as entries:
-        for entry in entries:
-            # Remove broken symlinks
-            if entry.name.startswith('@'):
-                logging.debug(f'Removing old symlink: {entry.name}')
-                print(f'Removing old symlink: {entry.name}')
-                os.unlink(entry.path)
+    # with os.scandir(settings.get('dayz_dir')) as entries:
+    #     for entry in entries:
+    #         # Remove broken symlinks
+    #         if entry.name.startswith('@'):
+    #             logging.debug(f'Removing old symlink: {entry.name}')
+    #             print(f'Removing old symlink: {entry.name}')
+    #             os.unlink(entry.path)
                 
     with os.scandir(symlink_dir) as entries:
         for entry in entries:
@@ -3206,9 +3333,15 @@ def get_ping_gameport(ip, gamePort):
         except ConnectionRefusedError:
             end_time = time.time()
             ping = round((end_time - start_time) * 1000)
-            print(f'({ip}, {gamePort}) - Connection Refused Ping: {ping} ms')
+            print(f'({ip}, {gamePort}) - Connection Refused GamePort Ping: {ping} ms')
 
         except socket.timeout:
+            ping = ''
+
+        except OSError as e:
+            error_message = f'(OS Error: {ip}, {gamePort}) - {e}'
+            logging.error(error_message)
+            print(error_message)
             ping = ''
 
     return ping
