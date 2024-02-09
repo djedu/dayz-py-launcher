@@ -82,14 +82,6 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
     `sudo pacman -S tk`
 
-* If you don't have Python installed on Windows, you can get it from [here](https://www.python.org/downloads/release/python-3116/).
-
-* Make sure Python has been added to your "PATH" (Checkbox on Windows during installation wizard.)
-
-* May also need to install Python's "Requests" module.
-
-    `pip install requests`
-
 ### Installer
 
 ### Linux...
@@ -104,6 +96,14 @@ Run this installer script in your terminal...
 
 ### Windows...
 
+* If you don't have Python installed on Windows, you can get it from [here](https://www.python.org/downloads/release/python-3116/).
+
+* Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" & "pywin32" modules.
+
+    `pip install requests`
+
+    `pip install pywin32`
+
 Run this installer script in PowerShell...
 
 `iwr -useb https://gitlab.com/tenpenny/dayz-py-launcher/-/raw/main/dayz_py_installer.ps1 | iex`
@@ -111,8 +111,6 @@ Run this installer script in PowerShell...
 * Files are installed to %AppData%/dayz_py
 
 * Once the script is complete, you should be able to run DayZ Py Launcher from your 'Start Menu'
-
-* Make sure you have added Python to your PATH (this can be set during the Python Installation) and installed the Python "Requests" module.
 
 ### Manual / Portable
 
