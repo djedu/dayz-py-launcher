@@ -1,4 +1,10 @@
 # Changelog
+## 2.7.6 (2024-02-10)
+### Fixed
+* stdout flush errors in Windows
+* Directory selection setting directories to "." when user hits cancel
+#
+
 ## 2.7.5 (2024-02-09)
 ### Added
 * Empty placeholder label on the Concole tab
