@@ -44,8 +44,6 @@ Have done no testing with Flatpak, only the normal Steam install on Manjaro.
 
 * Double clicking on a mod under "Installed Mods" will open the Steam Workshop page. Right Clicking will give you the option to open the mod directory in a file browser/explorer.
 
-* 'Sponsored' checkbox is for viewing the Sponsored listing from the DayZ Standalone Launcher.
-
 * You can use the switch at the bottom right corner to toggle between light and dark mode. Or permanently set it under Settings.
 
 * Any additional launch parameters you'd like to use can be set under the Settings tab. See screenshot above.
