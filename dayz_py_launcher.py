@@ -7,7 +7,6 @@ import multiprocessing
 import os
 import platform
 import re
-import requests
 import socket
 import subprocess
 import sys
@@ -863,6 +862,8 @@ class App(ttk.Frame):
             # Hide widgets from all tabs
             self.hide_tab_widgets(self.tab_4_widgets)
 
+            self.placeholder.grid(row=0, column=0, padx=5, pady=(0, 10), sticky='nsew')
+
         elif selected_tab == 4:
             # If "Settings" tab is selected
             # Hide widgets from all tabs except tab_5
@@ -989,6 +990,14 @@ class App(ttk.Frame):
             self.focus_trace_id = self.entry.bind('<Tab>', lambda e: filter_treeview())
 
     def setup_widgets(self):
+        # Set button widths to prevent notepad resizing on Tab changes
+        if windows_os:
+            self.button_width = 21
+            self.placeholder_width = 24
+        else:
+            self.button_width = 19
+            self.placeholder_width = 21
+
         # Create a Frame for input widgets
         self.widgets_frame = ttk.Frame(self, padding=(0, 0, 0, 10))
         self.widgets_frame.grid(
@@ -1065,7 +1074,7 @@ class App(ttk.Frame):
 
         # Download Servers Accentbutton
         self.refresh_all_button = ttk.Button(
-            self.widgets_frame, text='Download Servers', style='Accent.TButton', command=refresh_servers
+            self.widgets_frame, width=self.button_width, text='Download Servers', style='Accent.TButton', command=refresh_servers
         )
 
         # Refresh Selected server Accentbutton
@@ -1232,7 +1241,7 @@ class App(ttk.Frame):
 
         # Refresh Info Accentbutton
         self.refresh_info_button = ttk.Button(
-            self.widgets_frame, text='Refresh Info', style='Accent.TButton', command=refresh_server_mod_info
+            self.widgets_frame, width=self.button_width, text='Refresh Info', style='Accent.TButton', command=refresh_server_mod_info
         )
 
         # Manual Method Label
@@ -1447,7 +1456,7 @@ class App(ttk.Frame):
 
         # Refresh Mods Accentbutton
         self.refresh_mod_button = ttk.Button(
-            self.widgets_frame, text='Refresh Mods', style='Accent.TButton', command=generate_mod_treeview
+            self.widgets_frame, width=self.button_width, text='Refresh Mods', style='Accent.TButton', command=generate_mod_treeview
         )
 
         # Total Label (Total size of installed mods)
@@ -1496,6 +1505,16 @@ class App(ttk.Frame):
         sys.stdout = ConsoleGuiOutput(self.console, 'stdout', original_stdout)
         sys.stderr = ConsoleGuiOutput(self.console, 'stderr', original_stderr)
 
+        # Consold Tab Column 2 Placeholder. Keeps the Notepad from expanding and contracting
+        # when there's no widgets in Column 2
+        self.placeholder = ttk.Label(
+            self.widgets_frame,
+            text='',
+            justify='center',
+            anchor='n',
+            width=self.placeholder_width,
+        )
+
         # Tab #5 (Settings)
         self.tab_5 = ttk.Frame(self.notebook)
         self.notebook.add(self.tab_5, text='Settings')
@@ -1512,7 +1531,7 @@ class App(ttk.Frame):
 
         # Open DayZ Py Launcher installtion directory Accentbutton
         self.open_install_button = ttk.Button(
-            self.widgets_frame, width=19, text='Install Directory', style='Accent.TButton', command=self.open_install_dir
+            self.widgets_frame, width=self.button_width, text='Install Directory', style='Accent.TButton', command=self.open_install_dir
         )
 
         # Switch (Toggle Dark/Light Mode)
@@ -1579,7 +1598,8 @@ class App(ttk.Frame):
             self.open_install_button,
             self.force_mod_update_server_button,
             self.force_mod_update_installed_button,
-            self.installed_mods_entry
+            self.installed_mods_entry,
+            self.placeholder
         ]
         # Widgets to display on Tab 1
         self.tab_1_widgets = [
@@ -1633,7 +1653,9 @@ class App(ttk.Frame):
         ]
 
         # Widgets to display on Tab 4
-        self.tab_4_widgets = []
+        self.tab_4_widgets = [
+            self.placeholder
+        ]
 
         # Widgets to display on Tab 5
         self.tab_5_widgets = [
@@ -2434,14 +2456,22 @@ def is_junction(path):
 
 def ntfs_check(os_path_object):
     """
-    Used to check if a drive is NTFS in order to create junctions in Windows OS.    
+    Used to check if a drive is NTFS in order to create junctions in Windows OS.
     """
     is_ntfs = True
     drive_root = os.path.splitdrive(os_path_object)[0] + '\\'
-    drive_info = win32api.GetVolumeInformation(drive_root)
+    try:
+        drive_info = win32api.GetVolumeInformation(drive_root)
+    except NameError:
+        error_message = 'Unable to determine Filesystem Type. "win32api" not installed'
+        logging.error(error_message)
+        print(error_message)
+        app.MessageBoxError(error_message)
+        return False
+
     name = drive_info[0]
     filesys = drive_info[4]
-    
+
     if filesys.lower() != 'ntfs':
         is_ntfs = False
         error_message = (
@@ -2452,7 +2482,7 @@ def ntfs_check(os_path_object):
         logging.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
-        
+
     return is_ntfs
 
 
@@ -2683,6 +2713,8 @@ def refresh_server_mod_info():
     and would typically be used after installing/subscribing to missing
     mods.
     """
+    app.filter_server_mods_text.set('')
+
     generate_mod_treeview()
 
     app.OnSingleClick('')
@@ -2724,6 +2756,8 @@ def generate_mod_treeview():
     Checks for broken symlinks, removes if necessary. Creates symlinks
     for installed mods.
     """
+    app.filter_installed_mods_text.set('')
+
     dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
     symlink_dir = os.path.join(settings.get('dayz_dir'), sym_folder)
 
@@ -3416,7 +3450,7 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
                 time.sleep(1)
                 item_state = steamworks.Workshop.GetItemState(workshop_id)
                 # print(f'{(item_state,)}')
-                print_queue.put(f'{(item_state,)}')
+                # print_queue.put(f'{(item_state,)}')
                 progress_queue.put((mod_name, item_state))
 
     if request == 'Subscribe' or request == 'ForceUpdate':
@@ -3444,7 +3478,7 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
                 # print(f'{download_info}')
                 # print_queue.put(download_info)
                 # print(f'{(item_state,)}')
-                print_queue.put(f'{(item_state,)}')
+                # print_queue.put(f'{(item_state,)}')
                 progress_queue.put(
                     (mod_name, download_info.get('total'), download_info.get('progress'), item_state)
                 )
@@ -4152,6 +4186,23 @@ def set_initial_geometry():
     root.geometry(initial_geometry)
 
 
+def missing_module_alert():
+    """
+    Display a notification once the app has loaded if missing
+    a required module
+    """
+    if missing_requests:
+        app.MessageBoxError(
+            'You appear to be missing the "Requests" module. On Windows you can do this by running "pip install requests" '
+            'from the Command Prompt. On Linux, check your Repo.'
+        )
+    if missing_win32api:
+        app.MessageBoxError(
+            'You appear to be missing the "win32api" module. This can be installed by running "pip install pywin32" '
+            'from the Command Prompt.'
+        )
+
+
 if __name__ == '__main__':
 
     # Check user's platform
@@ -4174,7 +4225,12 @@ if __name__ == '__main__':
 
     if windows_os:
         import ctypes
-        import win32api
+        try:
+            import win32api
+            missing_win32api = False
+        except ModuleNotFoundError:
+            missing_win32api = True
+
         apply_windows_gui_fixes()
         sym_folder = '_pyw'
         gameExecutable = f'{os.path.join(settings.get("dayz_dir"), "DayZ_BE.exe")}'
@@ -4182,6 +4238,12 @@ if __name__ == '__main__':
         disable_console_writes = 'pythonw.exe' in sys.executable.lower()
 
     root.iconphoto(True, img)
+
+    try:
+        import requests
+        missing_requests = False
+    except ModuleNotFoundError:
+        missing_requests = True
 
     # Set the theme/mode configured in the settings
     # Source: https://github.com/rdbende/Azure-ttk-theme/tree/gif-based/
@@ -4209,6 +4271,10 @@ if __name__ == '__main__':
     # Load Favorites and History on Startup unless disabled by user
     if settings.get('load_favs_on_startup'):
         app.after(500, load_fav_history)
+
+    # Alert on missing modules
+    if missing_requests or (windows_os and missing_win32api):
+        app.after(2000, lambda: Thread(target=missing_module_alert, daemon=True).start())
 
     # Check for Updates. Delay it until after GUI is up to force popup
     # to center of the app.
