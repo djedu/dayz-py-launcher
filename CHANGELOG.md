@@ -3,7 +3,7 @@
 ### Added
 * Empty placeholder label on the Concole tab
 * Error handling for importing "requests" and "win32api" (pywin32)
-# Error handling when checking Filesystem on Windows
+* Error handling when checking Filesystem on Windows
 
 ### Changed
 * Adjusted the size of some button to prevent the "notepad" from resizing on Tab changes.
