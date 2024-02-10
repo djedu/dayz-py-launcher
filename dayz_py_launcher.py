@@ -32,7 +32,7 @@ logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 appName = 'DayZ Py Launcher'
-version = '2.7.5'
+version = '2.7.6'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v2/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
@@ -1694,7 +1694,8 @@ class ConsoleGuiOutput(object):
                 sys.__stderr__.write(stdstr)
 
     def flush(self):
-        self.original_stream.flush()
+        if self.original_stream:
+            self.original_stream.flush()
 
 
 class SettingsMenu:
@@ -1837,7 +1838,10 @@ class SettingsMenu:
         logging.debug(debug_message)
         print(debug_message)
 
-        if (directory and os.path.exists(directory)) or directory == '':
+        if directory == '':
+            return
+
+        elif directory and os.path.exists(directory):
             normalized = os.path.normpath(directory)
             var.set(normalized)
             settings[str(var)] = normalized
