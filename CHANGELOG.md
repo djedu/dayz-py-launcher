@@ -1,4 +1,18 @@
 # Changelog
+## 2.7.5 (2024-02-09)
+### Added
+* Empty placeholder label on the Concole tab
+* Error handling for importing "requests" and "win32api" (pywin32)
+# Error handling when checking Filesystem on Windows
+
+### Changed
+* Adjusted the size of some button to prevent the "notepad" from resizing on Tab changes.
+* Cut back on some of the output when calling Steamworks
+
+### Fixed
+* Server Mod & Installed Mods search/filter not clearing on refresh
+#
+
 ## 2.7.0 (2024-02-05)
 ### Added
 * Search/Filter entry box for Server Mods and Installed Mods
