@@ -19,7 +19,7 @@ cat <<-END > "$desktopFile"
 Version=1.0
 Type=Application
 Terminal=false
-Exec=python $dayz_py_file
+Exec=python3 $dayz_py_file
 Name=DayZ Py Launcher
 Path=$share
 Comment=DayZ Py Launcher
