@@ -87,6 +87,10 @@ stdout_lock = threading.Lock()
 # "sys.__stderr__.write"
 disable_console_writes = False
 
+# Used for Windows. Some users don't use NTFS and Launcher is unable
+# to create junction links to installed mods.
+symlink_supported_fs = True
+
 
 class App(ttk.Frame):
     def __init__(self, parent):
@@ -170,7 +174,7 @@ class App(ttk.Frame):
         Used to check for the DayZ process and close the popup once found.
         """
         if linux_os:
-            find_process = ['pgrep', '-f', 'DayZ(_x64)?\.exe']
+            find_process = ['pgrep', '-f', r'DayZ(_x64)?\.exe']
         elif windows_os:
             # Forcing "exit 1" since PowerShell wasn't throwing CalledProcessError on non-matching process queries
             get_wmi = (
@@ -2480,12 +2484,12 @@ def ntfs_check(os_path_object):
         is_ntfs = False
         error_message = (
             f'The drive DayZ is installed on ({name}) does not appear to be "NTFS". '
-            'This will limit the ability to install mods. Filesystem is currently '
+            'This will limit the ability to load mods. Filesystem is currently '
             f'detected as "{filesys}".'
         )
         logging.error(error_message)
         print(error_message)
-        app.MessageBoxError(error_message)
+        # app.MessageBoxError(error_message)
 
     return is_ntfs
 
@@ -2760,6 +2764,7 @@ def generate_mod_treeview():
     Checks for broken symlinks, removes if necessary. Creates symlinks
     for installed mods.
     """
+    global symlink_supported_fs
     app.filter_installed_mods_text.set('')
 
     dayzWorkshop = os.path.join(settings.get('steam_dir'), 'content', app_id)
@@ -2776,16 +2781,22 @@ def generate_mod_treeview():
     # Make sure DayZ is on an NTFS drive if running in Windows. Else, we won't be able to 
     # create Junctions
     if windows_os and not ntfs_check(symlink_dir):
-        return
+        symlink_supported_fs = False
+        # Remove the 'Open Symlink Directory' option from the Right Click context menu if
+        # it exist (Should exist only the first time the mods are loaded)
+        menu = app.installed_mods_tv.context_menu
+        entry = 'Open Symlink Directory'
+        if any(menu.entrycget(item, 'label') == entry for item in range(menu.index('end'))):
+            menu.delete(entry)
 
     # Check if symlink_dir exists, if not create it
-    if not os.path.exists(symlink_dir):
+    if not os.path.exists(symlink_dir) and symlink_supported_fs:
         os.makedirs(symlink_dir)
         debug_message = f"Symlink Directory created: {symlink_dir}"
         logging.debug(debug_message)
         print(debug_message)
 
-    if any([linux_os, windows_os]):
+    if any([linux_os, windows_os]) and symlink_supported_fs:
         remove_broken_symlinks(symlink_dir)
         create_symlinks(dayzWorkshop, symlink_dir)
 
@@ -2794,8 +2805,7 @@ def generate_mod_treeview():
 
     for mod, info in modDict.items():
         app.installed_mods_tv.insert('', tk.END, values=(
-            # f'@{encode(mod)}',
-            f'@{hashDict.get(mod).get("hash")}',
+            f'@{hashDict.get(mod).get("hash")}' if symlink_supported_fs else '',
             info.get('name'),
             mod,
             info.get('url'),
@@ -2820,19 +2830,23 @@ def compare_modlist(server_mods, installed_mods):
     return missing_mods
 
 
-def generate_mod_param_list(server_mods):
+def generate_mod_param_list(server_mods, dayzWorkshop):
     """
     Generates the ';' separated mod directory/symlink list that is
     appended to the Launch Command
     """
     mod_symlink_list = []
-    # Loop through the server mods IDs and append encoded ID to list. This encoded ID
-    # is the same one used to create the symlink and is used in the DayZ launch parameters
-    # to tell it where to locate the installed mod.
-    for id in server_mods.keys():
-        mod_symlink_list.append(f'{sym_folder}/@{hashDict.get(str(id)).get("hash")}')
+    # Loop through the server mods IDs and append symlink directory and hashed ID or
+    # the absolute path to the installed Workshop mod directory.
+    if symlink_supported_fs:
+        for id in server_mods.keys():
+            mod_symlink_list.append(f'{sym_folder}/@{hashDict.get(str(id)).get("hash")}')
+    else:
+        # Windows non-NTFS drive
+        for id in server_mods.keys():
+            mod_symlink_list.append(f'{dayzWorkshop}\{id}')
 
-    # Convert the encoded mod list into a string. Each mod is separted by ';'.
+    # Convert the hashed mod list into a string. Each mod is separted by ';'.
     mod_str_list = ';'.join(mod_symlink_list)
     # Command has to be in a list when passed to subprocess.
     mod_params = [f'"-mod={mod_str_list}"']
@@ -3001,7 +3015,7 @@ def launch_game():
     # Generate mod parameter list and append to launch command
     if server_mods and not missing_mods:
         print('Setting mod parameter list.')
-        mod_params = generate_mod_param_list(server_mods)
+        mod_params = generate_mod_param_list(server_mods, dayzWorkshop)
         # Append mod param to launch command
         logging.debug(f'Server mods params: {mod_params}')
         launch_cmd = launch_cmd + mod_params
@@ -3932,9 +3946,9 @@ def get_dayz_version(exe, server_version):
     https://stackoverflow.com/questions/580924/how-to-access-a-files-properties-on-windows
     """
     dayz_exe = f'{os.path.join(settings.get("dayz_dir"), exe)}'
-    language, codepage = win32api.GetFileVersionInfo(dayz_exe, '\\VarFileInfo\\Translation')[0]
+    language, codepage = win32api.GetFileVersionInfo(dayz_exe, r'\VarFileInfo\Translation')[0]
     # Returns version in this format... "1.23.0.157045"
-    product_version = win32api.GetFileVersionInfo(dayz_exe, '\\StringFileInfo\%04x%04x\ProductVersion' % (language, codepage))
+    product_version = win32api.GetFileVersionInfo(dayz_exe, r'\StringFileInfo\%04x%04x\ProductVersion' % (language, codepage))
     # Convert product_version to format used in DayZ... "1.23.157045"
     dayz_version = '.'.join(product_version.split('.')[:2] + product_version.split('.')[3:])
     
