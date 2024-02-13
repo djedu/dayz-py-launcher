@@ -1,4 +1,12 @@
 # Changelog
+## 2.8.0 (2024-02-12)
+### Added
+* Windows - Should now support joining Modded servers on non-NTFS drives (Use this method for all Windows drives in the future?)
+
+### Fixed
+* SyntaxWarning: invalid escape sequence for Python 3.12
+#
+
 ## 2.7.6 (2024-02-10)
 ### Fixed
 * stdout flush errors in Windows
