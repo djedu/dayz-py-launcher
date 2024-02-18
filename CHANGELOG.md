@@ -1,4 +1,22 @@
 # Changelog
+## 2.9.0 (2024-02-18)
+### Added 
+* Total Mod size and size downloaded to popup when Subscribing/Installing Mods.
+* Warning if Downloads may be Paused or Queued in Steam.
+* RotatingFileHandler for Logging. Now keeping two log files.
+* Handle case where mod publisher didn't fix the publisherid resulting in it being set to 0 instead of Workshop ID.
+* Shift+Up/Down to multi-select (Currently doesn't de-select if you change directions)
+
+### Changed
+* Decreased Wait time for Refreshing Mod info after Unsubscribing.
+* Hide "Steam Install Type" on Windows
+
+### Fixed
+* Possible infinite loop if issues Subscribing/Force Updating a Mod.
+* Issue using "Subscribe All" and Missing mods weren't listed first.
+* Padding of "Max Simultaneous Pings" on Windows
+#
+
 ## 2.8.0 (2024-02-12)
 ### Added
 * Windows - Should now support joining Modded servers on non-NTFS drives (Use this method for all Windows drives in the future?)
