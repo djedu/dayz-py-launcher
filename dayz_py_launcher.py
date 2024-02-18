@@ -16,6 +16,7 @@ import tkinter as tk
 from a2s import dayzquery
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from steamworks import STEAMWORKS
@@ -26,10 +27,22 @@ from tkinter import filedialog, messagebox, PhotoImage, simpledialog, ttk
 # Get the absolute path of the directory containing DayZ Py Launcher
 app_directory = os.path.dirname(os.path.abspath(__file__))
 
+# Configure logging
 loggingFile = os.path.join(app_directory, 'dayz_py.log')
-logging.basicConfig(filename=loggingFile, level=logging.DEBUG, filemode='w',
-                    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logMaxSize = 150_000
+
+appLogger = logging.getLogger()
+appLogger.setLevel(logging.DEBUG)
+
+logFileHandler = RotatingFileHandler(loggingFile, maxBytes=logMaxSize, backupCount=1)
+logFileHandler.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+logFileHandler.setFormatter(formatter)
+
+appLogger.addHandler(logFileHandler)
 logging.getLogger(a2s.__name__).setLevel(logging.INFO)
+
 
 appName = 'DayZ Py Launcher'
 version = '2.8.0'
@@ -226,7 +239,7 @@ class App(ttk.Frame):
             f"If the game didn't load, you may need to check the status in your Steam Library.\n"
             f'If DayZ says "Running", Right Click > Stop and then try rejoining the server.'
         )
-        logging.warning('Timed out checking for the DayZ process')
+        appLogger.warning('Timed out checking for the DayZ process')
         self.join_label_var.set(warn_message)
         self.loading_popup.geometry('600x110')
         self.loading_label_var.set('')
@@ -246,7 +259,11 @@ class App(ttk.Frame):
 
         self.progress_var = tk.DoubleVar()
         progress_bar = ttk.Progressbar(self.steamworks_popup, variable=self.progress_var, length=300, mode='determinate')
-        progress_bar.pack(pady=10)
+        progress_bar.pack(pady=(10, 0))
+
+        self.download_label_var = tk.StringVar(value='')
+        download_label = ttk.Label(self.steamworks_popup, justify='center', textvariable=self.download_label_var, font=("", 10))
+        download_label.pack(pady=0)
 
     def OnSingleClick(self, event):
         """
@@ -332,6 +349,23 @@ class App(ttk.Frame):
                 event.widget.selection_set(rightClickItem)
                 # rightClickValues = event.widget.item(item)['values']
                 event.widget.context_menu.post(event.x_root, event.y_root)
+
+    def shiftMultiSelect(self, event):
+        """
+        Allows holding Shift plus Up or Down to select multipl treeview items.
+        """
+        treeview = event.widget
+        item = treeview.focus()
+
+        if event.keysym == 'Down':
+            add_item = treeview.next(item)
+        elif event.keysym == 'Up':
+            add_item = treeview.prev(item)
+
+        treeview.selection_add(add_item)
+        treeview.focus(add_item)
+
+        return 'break'
 
     def close_menu(self, event):
         """
@@ -432,12 +466,12 @@ class App(ttk.Frame):
         Check if the subprocess has finished. Use the queue to communicate
         with the Steamworks process in order to update the GUI.
         """
-        open_steam_downloads = False
+        openSteamDownloads = False
         if not print_queue.empty():
             current_stdout = print_queue.get_nowait()
             print(current_stdout)
             if current_stdout == 'Open Steam Downloads':
-                open_steam_downloads = True
+                openSteamDownloads = True
 
         if process.is_alive():
             self.after(100, lambda: self.checkProcess(process, error_queue, waitTime, progress_queue, print_queue))
@@ -447,23 +481,35 @@ class App(ttk.Frame):
                 if len(current_progress) > 2: # Subscribing
                     self.progress_label_var.set(f'Downloading "{current_progress[0]}"...')
 
+                    if current_progress[3] == 9:
+                        self.download_label_var.set('Check Steam Downloads. Mod downloads may be Paused or Queued.')
+
                     # Only update progress bar while "Total" download size is not 0. Note
                     # "downloaded" is not tracked through "progress_queue", Only "total" and
                     # "progress".
                     # {'downloaded': 0, 'total': 621120, 'progress': 0.0}
                     # {'downloaded': 55424, 'total': 621120, 'progress': 0.08923235445646574}
-                    if current_progress[1] != 0 and current_progress[2]:
+                    # if current_progress[1] != 0 and current_progress[2]:
+                    elif current_progress[1]:
                         self.progress_var.set(current_progress[2] * 100)
+                        self.mod_size = round(current_progress[1] / 1048576, 2)
+                        downloaded = round(self.mod_size * current_progress[2], 2)
+                        # self.byte_string = 'MBs' if current_progress[1] < 1073741824 else 'GBs'
+                        self.download_label_var.set(f'{downloaded:,} MBs of {self.mod_size:,} MBs')
 
                     # Set Progress to 100 if download has completed and Steam reverted all
                     # download values back to 0 and Item_State is 5 (installed).
                     # {'downloaded': 0, 'total': 0, 'progress': 0.0}
                     elif current_progress[3] == 5:
                         self.progress_var.set(100)
+                        if 'MBs' in self.download_label_var.get():
+                            self.download_label_var.set(f'{self.mod_size:,} MBs of {self.mod_size:,} MBs')
+
 
                     # Reset progress bar when switching to next mod
                     elif self.progress_var.get() == 100:
                         self.progress_var.set(0)
+                        self.download_label_var.set('')
                         refresh_server_mod_info()
 
                 else: # Unsubscribing
@@ -474,6 +520,9 @@ class App(ttk.Frame):
 
                     elif current_progress[1] == 4:
                         self.progress_var.set(100)
+
+            if not error_queue.empty():
+                self.MessageBoxError(error_queue.get())
 
         else:
             if not error_queue.empty():
@@ -486,7 +535,7 @@ class App(ttk.Frame):
 
             self.steamworks_running = False
 
-        if open_steam_downloads:
+        if openSteamDownloads:
             self.after(2000, lambda: self.open_url('steam://nav/downloads'))
 
     def modRequests(self, treeview, request, waitTime, onlyMissingMods=False):
@@ -498,7 +547,7 @@ class App(ttk.Frame):
         # or unsubscribing that Steamworks hadn't fully initiallized. Adding this as an extra failsafe.
         if not check_steam_process():
             error_message = f"Steam isn't running (failsafe check). Can't {request} to mod(s)."
-            logging.error(f'{error_message}')
+            appLogger.error(f'{error_message}')
             print(error_message)
             self.MessageBoxError(error_message)
             return
@@ -508,7 +557,7 @@ class App(ttk.Frame):
                 'Previous Steamworks request appears to be running. '
                 'Try again once it completes or restart DayZ Py Launcher.'
             )
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
             return
@@ -517,7 +566,7 @@ class App(ttk.Frame):
             ask_message = 'Are you sure you want to "Unsubscribe" from selected mod(s)?'
             answer = app.MessageBoxAskYN(message=ask_message)
             debug_message = f'Unsubscribe?: {answer}'
-            logging.debug(debug_message)
+            appLogger.debug(debug_message)
             print(debug_message)
             if not answer:
                 return
@@ -535,6 +584,8 @@ class App(ttk.Frame):
         mod_list = []
         for item_id in treeview_list:
             mod_values = treeview.item(item_id, 'values')
+            if onlyMissingMods and mod_values[3] == 'Installed':
+                continue
             if onlyMissingMods and mod_values[3] == 'Missing':
                 mod_name = mod_values[0]
                 workshop_id = int(mod_values[1])
@@ -577,7 +628,7 @@ class App(ttk.Frame):
         ask_message = 'Use Steam to verify the integrity of your DayZ installation files? This may take several minutes.'
         answer = app.MessageBoxAskYN(message=ask_message)
         debug_message = f'Verify DayZ Install: {answer}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
         if answer:
             self.open_url(f'steam://validate/{app_id}')
@@ -606,7 +657,7 @@ class App(ttk.Frame):
         if removed:
             logInfo = f'{self.treeview.item(rightClickItem)["values"][1]} - {ip}:{queryPort}'
             logMessage = f'{logInfo} - Removed from History'
-            logging.info(logMessage)
+            appLogger.info(logMessage)
             print(logMessage)
             save_settings_to_json()
 
@@ -624,13 +675,13 @@ class App(ttk.Frame):
 
             if fav_state:
                 logMessage = f'{logInfo} - Added to Favorites'
-                logging.info(logMessage)
+                appLogger.info(logMessage)
                 print(logMessage)
 
                 settings['favorites'][f'{ip}:{queryPort}'] = {'name': serverDict_info.get('name')}
             else:
                 logMessage = f'{logInfo} - Removed from Favorites'
-                logging.info(logMessage)
+                appLogger.info(logMessage)
                 print(logMessage)
 
                 settings['favorites'].pop(f'{ip}:{queryPort}', None)
@@ -642,7 +693,7 @@ class App(ttk.Frame):
                 f'No server is currently selected to add or remove from favorites. '
                 f'Please select a server first.'
             )
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.favorite_var.set(value=False)
             self.MessageBoxError(message=error_message)
@@ -902,7 +953,7 @@ class App(ttk.Frame):
                 subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open URL.\n\n{e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
 
@@ -924,7 +975,7 @@ class App(ttk.Frame):
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open mod directory.\n\n{e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
 
@@ -959,7 +1010,7 @@ class App(ttk.Frame):
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open symlink directory.\n\n{e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
 
@@ -977,7 +1028,7 @@ class App(ttk.Frame):
             subprocess.Popen(open_cmd)
         except subprocess.CalledProcessError as e:
             error_message = f'Failed to open install directory.\n\n{e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             self.MessageBoxError(error_message)
 
@@ -1048,6 +1099,8 @@ class App(ttk.Frame):
         self.treeview.bind('<<TreeviewSelect>>', self.OnSingleClick)
         # Right Click Menu
         self.treeview.bind("<Button-3>", self.rightClick_selection)
+        self.treeview.bind('<Shift-Down>', self.shiftMultiSelect)
+        self.treeview.bind('<Shift-Up>', self.shiftMultiSelect)
         self.treeview.context_menu = tk.Menu(self.treeview, tearoff=0, bd=4, relief='groove')
         self.treeview.context_menu.add_command(label='Copy IP', command=self.copyIP)
         self.treeview.context_menu.add_command(label='Copy Name', command=self.copyName)
@@ -1337,6 +1390,8 @@ class App(ttk.Frame):
         self.server_mods_tv.bind('<Control-a>', lambda e: self.selectAllItemsText(self.server_mods_tv))
         # Right Click Menu
         self.server_mods_tv.bind("<Button-3>", self.rightClick_selection)
+        self.server_mods_tv.bind('<Shift-Down>', self.shiftMultiSelect)
+        self.server_mods_tv.bind('<Shift-Up>', self.shiftMultiSelect)
         self.server_mods_tv.context_menu = tk.Menu(
             self.server_mods_tv, tearoff=0, bd=4, relief='groove'
         )
@@ -1356,7 +1411,7 @@ class App(ttk.Frame):
         self.server_mods_tv.context_menu.add_command(
             label='Unsubscribe',
             command=lambda: Thread(
-                target=self.modRequests(self.server_mods_tv, 'Unsubscribe', 10000),
+                target=self.modRequests(self.server_mods_tv, 'Unsubscribe', 7000),
                 daemon=True
             ).start()
         )
@@ -1420,6 +1475,8 @@ class App(ttk.Frame):
         self.installed_mods_tv.bind('<Control-a>', lambda e: self.selectAllItemsText(self.installed_mods_tv))
         # Right Click Menu
         self.installed_mods_tv.bind("<Button-3>", self.rightClick_selection)
+        self.installed_mods_tv.bind('<Shift-Down>', self.shiftMultiSelect)
+        self.installed_mods_tv.bind('<Shift-Up>', self.shiftMultiSelect)
         self.installed_mods_tv.context_menu = tk.Menu(
             self.installed_mods_tv, tearoff=0, bd=4, relief='groove'
         )
@@ -1440,7 +1497,7 @@ class App(ttk.Frame):
         self.installed_mods_tv.context_menu.add_command(
             label='Unsubscribe',
             command=lambda: Thread(
-                target=self.modRequests(self.installed_mods_tv, 'Unsubscribe', 10000),
+                target=self.modRequests(self.installed_mods_tv, 'Unsubscribe', 7000),
                 daemon=True
             ).start()
         )
@@ -1743,19 +1800,20 @@ class SettingsMenu:
         self.profile_entry.bind("<FocusOut>", self.on_entry_focus_change)
 
         # Radio buttons for options
-        self.install_options_label = ttk.Label(self.frame, text='Steam Install Type:')
-        self.install_options_label.grid(row=4, column=0, padx=(0, 5), pady=(10, 10), sticky='e')
+        if not windows_os:
+            self.install_options_label = ttk.Label(self.frame, text='Steam Install Type:')
+            self.install_options_label.grid(row=4, column=0, padx=(0, 5), pady=(10, 10), sticky='e')
 
-        self.install_var = tk.StringVar(value=settings.get('install_type'))  # Default value
-        self.install1_button = ttk.Radiobutton(
-            self.frame, text='Standard/Runtime', variable=self.install_var, value='steam', command=self.on_install_change
-        )
-        self.install1_button.grid(row=4, column=1, padx=(100, 0), sticky='w')
+            self.install_var = tk.StringVar(value=settings.get('install_type'))  # Default value
+            self.install1_button = ttk.Radiobutton(
+                self.frame, text='Standard/Runtime', variable=self.install_var, value='steam', command=self.on_install_change
+            )
+            self.install1_button.grid(row=4, column=1, padx=(100, 0), sticky='w')
 
-        self.install2_button = ttk.Radiobutton(
-            self.frame, text='Flatpak', variable=self.install_var, value='flatpak', command=self.on_install_change
-        )
-        self.install2_button.grid(row=4, column=1, padx=(0, 100), sticky='e')
+            self.install2_button = ttk.Radiobutton(
+                self.frame, text='Flatpak', variable=self.install_var, value='flatpak', command=self.on_install_change
+            )
+            self.install2_button.grid(row=4, column=1, padx=(0, 100), sticky='e')
 
         # Theme selection
         self.theme_var = tk.StringVar(value=settings.get('theme'))
@@ -1812,7 +1870,8 @@ class SettingsMenu:
 
         self.max_pings_var = tk.IntVar(value=settings.get('max_sim_pings'))
         self.max_pings_label = ttk.Label(self.frame, text="Max Simultaneous Pings:")
-        self.max_pings_label.grid(row=8, column=1, padx=(65, 0), pady=(7, 10))
+        pad = 35 if windows_os else 65
+        self.max_pings_label.grid(row=8, column=1, padx=(pad, 0), pady=(7, 10))
         self.max_pings_entry = ttk.Entry(self.frame, width=15, textvariable=self.max_pings_var)
         self.max_pings_entry.grid(row=8, column=1, pady=(7, 10), sticky='e')
         self.max_pings_entry.bind("<FocusOut>", self.on_entry_focus_change)
@@ -1839,7 +1898,7 @@ class SettingsMenu:
         global settings
         directory = filedialog.askdirectory()
         debug_message = f'User chose directory: {directory}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
 
         if directory == '':
@@ -1851,13 +1910,13 @@ class SettingsMenu:
             settings[str(var)] = normalized
 
             debug_message = f'Normalized directory: {normalized}'
-            logging.debug(debug_message)
+            appLogger.debug(debug_message)
             print(debug_message)
 
             save_settings_to_json()
         elif directory != ():
             error_message = 'Warning: The selected directory does not exist.'
-            logging.error(f'{error_message} - {str(var)} - {directory}')
+            appLogger.error(f'{error_message} - {str(var)} - {directory}')
             print(error_message)
             app.MessageBoxError(message=error_message)
 
@@ -1884,7 +1943,7 @@ class SettingsMenu:
 
         except tk.TclError as tclerror:
             error_message = f'Invalid Entry. Must be a number.'
-            logging.error(f'{event.widget} - {error_message} - {tclerror}')
+            appLogger.error(f'{event.widget} - {error_message} - {tclerror}')
             print(error_message, tclerror)
             app.MessageBoxError(message=error_message)
 
@@ -1969,13 +2028,13 @@ def load_settings_from_file(settings):
             try:
                 settings.update(json.load(json_file))
                 # print(json.dumps(settings, indent=4))
-                logging.info(f'Load Settings: {json.dumps(settings, indent=4)}')
+                appLogger.info(f'Load Settings:\n{json.dumps(settings, indent=4)}')
             except json.decoder.JSONDecodeError as err:
                 error_message = (
                     'Error: Unable to load Settings file. Not in valid json format.\n\n'
                     'Try reconfiguring settings.'
                 )
-                logging.error(f'{error_message} - {err}')
+                appLogger.error(f'{error_message} - {err}')
                 print(error_message)
                 messagebox.showerror(message=error_message)
 
@@ -2413,7 +2472,7 @@ def thread_pool(server_pings, treeview_children, treeview_list):
 
     except tk.TclError as te:
         error_message = f'User probably pressed "Download Servers" again before first one completed: {te}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
 
 
@@ -2472,7 +2531,7 @@ def ntfs_check(os_path_object):
         drive_info = win32api.GetVolumeInformation(drive_root)
     except NameError:
         error_message = 'Unable to determine Filesystem Type. "win32api" not installed'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
         return False
@@ -2487,7 +2546,7 @@ def ntfs_check(os_path_object):
             'This will limit the ability to load mods. Filesystem is currently '
             f'detected as "{filesys}".'
         )
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         # app.MessageBoxError(error_message)
 
@@ -2505,7 +2564,7 @@ def start_steam():
         time.sleep(5)
     except subprocess.CalledProcessError as e:
         error_message = f'Failed to launch Steam.\n\n{e}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
 
@@ -2532,14 +2591,14 @@ def remove_broken_symlinks(symlink_dir):
     #     for entry in entries:
     #         # Remove broken symlinks
     #         if entry.name.startswith('@'):
-    #             logging.debug(f'Removing old symlink: {entry.name}')
+    #             appLogger.debug(f'Removing old symlink: {entry.name}')
     #             print(f'Removing old symlink: {entry.name}')
     #             os.unlink(entry.path)
                 
     with os.scandir(symlink_dir) as entries:
         for entry in entries:
             if entry.name.startswith('@') and (entry.is_symlink() or is_junction(entry.path)) and not os.path.isdir(entry.path):
-                logging.debug(f'Removing broken symlink: {entry.name}')
+                appLogger.debug(f'Removing broken symlink: {entry.name}')
                 print(f'Removing broken symlink: {entry.name}')
                 os.unlink(entry.path)
             elif entry.name.startswith('@') and (entry.is_symlink() or is_junction(entry.path)) and os.path.isdir(entry.path):
@@ -2547,6 +2606,8 @@ def remove_broken_symlinks(symlink_dir):
                 meta_path = os.path.join(entry, 'meta.cpp')
                 if os.path.isfile(meta_path):
                     name, id = mod_meta_info(meta_path)
+                    if id == '0':
+                        id = os.path.basename(os.readlink(entry.path))
                     hashDict[id] = {'name': name, 'hash': entry.name[1:]}
 
 
@@ -2576,6 +2637,14 @@ def create_symlinks(directory, symlink_dir):
         meta_path = os.path.join(mod_path, 'meta.cpp')
 
         name, id = mod_meta_info(meta_path)
+        # Handle case where Workshop mod creator didn't perform the second
+        # upload/update to populate the publishedid field in the meta.cpp
+        # Maybe this shouldn't be handled as is hides the issue. ¯\_(ツ)_/¯
+        if id == '0':
+            id = folder_name
+            warn_message = f'Mod "{name}" has not set their publishedid. Using Workshop base directory name "{id}".'
+            appLogger.warning(warn_message)
+            print(warn_message)
 
         if not hashDict.get(id):
 
@@ -2593,7 +2662,7 @@ def create_symlinks(directory, symlink_dir):
                 # Create symlink if it doesn't exist
                 if (not os.path.islink(symlink) or not is_junction(symlink)) and not os.path.exists(symlink):
                     debug_message = f'Creating Symlink for: {name} - {symlink}'
-                    logging.debug(debug_message)
+                    appLogger.debug(debug_message)
                     print(debug_message)
                     hashDict[id] = {'name': name, 'hash': current_hash}
                     if linux_os:
@@ -2610,7 +2679,7 @@ def create_symlinks(directory, symlink_dir):
                 else:
                     # Log if no contitions met.
                     error_message = f'Possible issues creating Symlink for: {name} - {symlink}'
-                    logging.error(error_message)
+                    appLogger.error(error_message)
                     print(error_message)
                     break
 
@@ -2694,8 +2763,8 @@ def get_installed_mods(directory):
         total_size += mod_size
         modDict[mod] = {
             'name': mod_name,
-            'size': f'{round(mod_size / (1024 ** 2), 2):,}',  # Size in MBs
-            # 'size': round(mod_size / (1024 ** 2), 2),
+            'size': f'{round(mod_size / (1048576), 2):,}',  # Size in MBs
+            # 'size': round(mod_size / (1048576), 2),
             'url': f'{workshop_url}{mod}'
         }
 
@@ -2703,10 +2772,10 @@ def get_installed_mods(directory):
     # modDict['total_size'] = total_size # Size in bytes
 
     # Convert to GB or MB based on the size
-    if total_size >= 1024**3:  # If size is >= 1 GB
-        total_size = f'{round(total_size / (1024**3), 2)} GBs'
+    if total_size >= 1073741824:  # If size is >= 1 GB
+        total_size = f'{round(total_size / (1073741824), 2)} GBs'
     else:  # If size is < 1 GB
-        total_size = f'{round(total_size / (1024**2), 2)} MBs'
+        total_size = f'{round(total_size / (1048576), 2)} MBs'
 
     app.total_size_var.set(f'Total Size of Installed Mods\n{total_size}')
     # print(json.dumps(modDict, indent=4))
@@ -2773,7 +2842,7 @@ def generate_mod_treeview():
     # Check if dayzWorkshop exists, if not log and return
     if not os.path.exists(dayzWorkshop):
         debug_message = f"Either wrong directory set for Steam Workshop or no mods installed."
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
         app.MessageBoxInfo(debug_message)
         return
@@ -2793,7 +2862,7 @@ def generate_mod_treeview():
     if not os.path.exists(symlink_dir) and symlink_supported_fs:
         os.makedirs(symlink_dir)
         debug_message = f"Symlink Directory created: {symlink_dir}"
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
 
     if any([linux_os, windows_os]) and symlink_supported_fs:
@@ -2824,7 +2893,7 @@ def compare_modlist(server_mods, installed_mods):
         if str(id) not in installed_mods:
             debug_message = f'Missing Mod: {name}'
             print(debug_message)
-            logging.debug(debug_message)
+            appLogger.debug(debug_message)
             missing_mods = True
 
     return missing_mods
@@ -2880,23 +2949,23 @@ def launch_game():
     global gameExecutable
     if not settings.get('profile_name'):
         error_message = 'No Profile Name is currently set.\nCheck the Settings tab, then try again.'
-        logging.error(error_message)
+        appLogger.error(error_message)
         app.MessageBoxError(message=error_message)
         return
 
     steam_running = check_steam_process()
     debug_message = f'Steam Running: {steam_running}'
-    logging.debug(debug_message)
+    appLogger.debug(debug_message)
     print(debug_message)
     if not steam_running:
         ask_message = "Steam isn't running.\nStart it?"
         answer = app.MessageBoxAskYN(message=ask_message)
         debug_message = f'Start Steam: {answer}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
         if not answer:
             error_message = 'Steam is required for DayZ.\nCancelling "Join Server"'
-            logging.error(error_message)
+            appLogger.error(error_message)
             app.MessageBoxError(message=error_message)
             return
         elif answer and windows_os:
@@ -2904,17 +2973,17 @@ def launch_game():
 
     dayz_running = check_dayz_process()
     debug_message = f'DayZ Running: {dayz_running}'
-    logging.debug(debug_message)
+    appLogger.debug(debug_message)
     print(debug_message)
     if dayz_running:
         warn_message = 'DayZ is already running.\nClose the game and try again'
-        logging.warning(warn_message)
+        appLogger.warning(warn_message)
         app.MessageBoxWarn(message=warn_message)
         return
 
     if linux_os and not check_max_map_count():
         error_message = 'Unable to update max_map_count.\nCancelling "Join Server"'
-        logging.error(error_message)
+        appLogger.error(error_message)
         app.MessageBoxError(message=error_message)
         return
 
@@ -2927,7 +2996,7 @@ def launch_game():
     # Make sure we have at least the IP and Game Port
     if not all([ip, port]):
         error_message = 'Unable to get IP and/or Game Port.\nServer may be down'
-        logging.error(error_message)
+        appLogger.error(error_message)
         app.MessageBoxError(message=error_message)
         return
 
@@ -2949,7 +3018,7 @@ def launch_game():
     # previously stored in the serverDict
     if not server_mods:
         warn_message = f'Failed getting mods directly from server ({ip}, {queryPort}. Using existing serverDict mod list.)'
-        logging.warning(warn_message)
+        appLogger.warning(warn_message)
         print(warn_message)
         server_mods = get_serverDict_mods(ip, queryPort)
 
@@ -2959,14 +3028,14 @@ def launch_game():
         ask_message = "Would you like to install all the missing mods for this server?"
         answer = app.MessageBoxAskYN(message=ask_message)
         debug_message = f'Install missing mods: {answer}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
         app.notebook.select(1)
         if answer:
             app.modRequests(app.server_mods_tv, 'Subscribe', 3000, True)
         else:
             error_message = 'Unable to join server. Check the "Server Info" tab for missing mods'
-            logging.error(error_message)
+            appLogger.error(error_message)
             app.MessageBoxError(message=error_message)
         return
 
@@ -3003,13 +3072,13 @@ def launch_game():
             ]
 
     launch_cmd = default_params
-    logging.debug(f'Initial launch_cmd: {launch_cmd}')
+    appLogger.debug(f'Initial launch_cmd: {launch_cmd}')
 
     # Append Additional parameters input by the user to launch command.
     if settings.get('launch_params'):
         print('Setting additional parameters.')
         steam_custom_params = settings.get('launch_params').strip().split(' ')
-        logging.debug(f'Additional launch params: {steam_custom_params}')
+        appLogger.debug(f'Additional launch params: {steam_custom_params}')
         launch_cmd = launch_cmd + steam_custom_params
 
     # Generate mod parameter list and append to launch command
@@ -3017,17 +3086,17 @@ def launch_game():
         print('Setting mod parameter list.')
         mod_params = generate_mod_param_list(server_mods, dayzWorkshop)
         # Append mod param to launch command
-        logging.debug(f'Server mods params: {mod_params}')
+        appLogger.debug(f'Server mods params: {mod_params}')
         launch_cmd = launch_cmd + mod_params
 
     # launch_cmd = default_params + steam_custom_params + [mod_params]
     debug_message = f'{launch_cmd=}'
-    logging.debug(debug_message)
+    appLogger.debug(debug_message)
     # print(debug_message)
 
     str_command = " ".join(launch_cmd)
     debug_message = f'Using launch command: {str_command}'
-    logging.debug(debug_message)
+    appLogger.debug(debug_message)
     print(debug_message)
 
     try:
@@ -3037,7 +3106,7 @@ def launch_game():
             subprocess.Popen(str_command)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         error_message = f'Failed to launch DayZ.\n\n{e}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
 
@@ -3090,7 +3159,7 @@ def check_max_map_count():
         output = subprocess.check_output(['sysctl', 'vm.max_map_count'], universal_newlines=True)
         value = output.split('=')[1].strip()
         debug_message = f'Current vm.max_map_count: {value}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
 
         if int(value) >= 1048576:
@@ -3121,22 +3190,22 @@ def check_max_map_count():
                     sys.stderr.write(f'{result.stderr}\n')
 
                     debug_message = f'Output: {result}'
-                    logging.debug(debug_message)
+                    appLogger.debug(debug_message)
                     print(debug_message)
                     return True
                 except subprocess.CalledProcessError as e:
                     error_code = f'Command failed with exit status: {e.returncode}'
-                    logging.error(error_code)
+                    appLogger.error(error_code)
                     print(error_code)
                     error_output = f'Error output: {e.stderr}'
-                    logging.error(error_output)
+                    appLogger.error(error_output)
                     print(error_output)
                     app.MessageBoxError(message='Command failed. Check your password.')
                     return False
 
     except subprocess.CalledProcessError as e:
         error_message = f'Error checking vm.max_map_count: {e}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(message='Failed to get max_map_count')
         return False
@@ -3194,7 +3263,7 @@ def a2s_query(ip, queryPort, update: bool=True):
     except TimeoutError:
         with stdout_lock:
             debug_message = f'Timed out getting info/ping from Server {ip} using QueryPort {queryPort}'
-            logging.debug(debug_message)
+            appLogger.debug(debug_message)
             print(debug_message)
             ping = ''
             info = None
@@ -3202,21 +3271,21 @@ def a2s_query(ip, queryPort, update: bool=True):
         with stdout_lock:
             # This error is raised on Windows if the server IP is 0.0.0.0
             error_message = f'OSError getting info/ping from Server {ip} using QueryPort {queryPort} - {osError}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             ping = ''
             info = None
     except IndexError as ie:
         with stdout_lock:
             error_message = f'IndexError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ie}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(info)
             ping = ''
             info = None
     except KeyError as ke:
         with stdout_lock:
             error_message = f'KeyError from Server {ip} using QueryPort {queryPort} - Info: {info} - {ke}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(info)
             print(ip, queryPort)
             ping = ''
@@ -3260,7 +3329,7 @@ def a2s_mods(ip, queryPort):
 
     except TimeoutError:
         debug_message = f'Timed out getting mods from Server {ip} using QueryPort {queryPort}'
-        logging.debug(debug_message)
+        appLogger.debug(debug_message)
         print(debug_message)
         # Use DZSAL Single Server Query API as a backup.
         get_dzsa_mods(ip, queryPort)
@@ -3297,7 +3366,6 @@ def a2s_players(ip, queryPort):
         debug_message = f'Timed out getting player count from Server {ip} using QueryPort {queryPort}'
         actual_player_count = reported_players if reported_players < max_players else 0
 
-    logging.debug(debug_message)
     serverDict[f'{ip}:{queryPort}']['players'] = actual_player_count
 
     return actual_player_count, debug_message
@@ -3312,7 +3380,7 @@ def get_dzsa_mods(ip, queryPort):
     from a different ISP works.
     """
     debug_message = f'Failed over to getting mods from DZSAL for Server {ip} using QueryPort {queryPort}'
-    logging.debug(debug_message)
+    appLogger.debug(debug_message)
     print(debug_message)
 
     url = f'https://dayzsalauncher.com/api/v1/query/{ip}/{queryPort}'
@@ -3348,11 +3416,11 @@ def get_ping_cmd(ip):
         else:
             return None
             error_message = f'Ping command Error: {result.stderr}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
     except Exception as e:
         error_message = f'Ping command Exception: {str(e)}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         return None
 
@@ -3392,7 +3460,7 @@ def get_ping_gameport(ip, gamePort):
 
         except OSError as e:
             error_message = f'(OS Error: {ip}, {gamePort}) - {e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             ping = ''
 
@@ -3404,7 +3472,7 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
     Used to Subscribe or Unsubscribe to mods in Steam's Workshop.
     """
     steamworks = STEAMWORKS(_libs=steamworks_libraries)
-    open_steam_downloads = False
+    openSteamDownloads = False
     try:
         # Try to start Steamworks
         steamworks.initialize()
@@ -3415,21 +3483,21 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
             attempts += 1
         if not steamworks.loaded():
             error_message = 'Failed to Initialize Steamworks. Verify Steam is working and try again.'
-            logging.error(error_message)
+            appLogger.error(error_message)
             # print(error_message)
             print_queue.put(error_message)
             error_queue.put(error_message)
             return
     except Exception as error:
         error_message = f"Steam isn't running. Can't {request} to mod(s)."
-        logging.error(f'{error_message} - {error}')
+        appLogger.error(f'{error_message} - {error}')
         # print(error_message)
         print_queue.put(error_message)
         error_queue.put(error_message)
         return
 
-    def start_callbacks():
-        while not stop_callbacks:
+    def startCallBacks():
+        while not stopCallBacks:
             steamworks.run_callbacks()
             time.sleep(0.1)
 
@@ -3443,10 +3511,10 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
         print_queue.put(('Item unsubscribed', args[0].result, args[0].publishedFileId))
 
     # Create a variable to signal the thread to stop
-    stop_callbacks = False
+    stopCallBacks = False
 
-    callback_thread = threading.Thread(target=start_callbacks, daemon=True)
-    callback_thread.start()
+    callBackThread = threading.Thread(target=startCallBacks, daemon=True)
+    callBackThread.start()
 
     # Perform Steamworks Request
     # Item states/flags...
@@ -3482,14 +3550,16 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
             steamworks.Workshop.SubscribeItem(workshop_id)
             download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
 
+            count = 0
             while item_state != 5:
                 if item_state == 4 or item_state == 0:
                     steamworks.Workshop.SubscribeItem(workshop_id)
+                    count += 1
                 # Steam doesn't seem to download updates while Steamworks is running.
                 # Break and signal to open Steam Downloads page. Mod should begin
                 # downloading or have the option to start the download.
                 if request == 'ForceUpdate' and item_state == 13:
-                    open_steam_downloads = True
+                    openSteamDownloads = True
                     break
                 download_info = steamworks.Workshop.GetItemDownloadInfo(workshop_id)
                 item_state = steamworks.Workshop.GetItemState(workshop_id)
@@ -3501,10 +3571,16 @@ def CallSteamworksApi(request, mod_list, error_queue, progress_queue, print_queu
                     (mod_name, download_info.get('total'), download_info.get('progress'), item_state)
                 )
                 time.sleep(1)
+                if count == 10:
+                    error_message = f'Issues with {request} to {mod_name}. Possibly with Steam or mod may have been removed from the Workshop.'
+                    appLogger.error(error_message)
+                    print_queue.put(error_message)
+                    error_queue.put(error_message)
+                    break
 
-    stop_callbacks = True
+    stopCallBacks = True
     steamworks.unload()
-    if open_steam_downloads:
+    if openSteamDownloads:
         print_queue.put('Open Steam Downloads')
     time.sleep(1)
 
@@ -3555,7 +3631,7 @@ def get_dzsa_data(url):
 
         if api_timeout:
             warn_message = f'DZSA API Timeout has occured. Try again.\n{url}'
-            logging.warning(warn_message)
+            appLogger.warning(warn_message)
             print(warn_message)
             app.MessageBoxWarn(message=warn_message)
             return None
@@ -3564,20 +3640,20 @@ def get_dzsa_data(url):
             return json.loads(response.content)
         else:
             error_message = f'HTTP Status Code: {response.status_code}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             return None
 
     except requests.exceptions.ConnectionError as e:
         error_message = f'Error connecting to DZSA API:\n{e}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(message=error_message)
         return None
 
     except json.decoder.JSONDecodeError as e:
         error_message = f'Invalid response from DZSA API:\n{e}\n\nTry again shortly.'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(message=error_message)
         return None
@@ -3655,7 +3731,7 @@ def manually_add_server():
 
             info_message = f'Server is already in the List: {ip}:{queryPort}'
             print(info_message)
-            logging.info(info_message)
+            appLogger.info(info_message)
             app.MessageBoxInfo(message=info_message)
             break
     else:
@@ -3736,10 +3812,11 @@ def query_item_list(itemList, loading_favs=False):
                     if players > maxPlayers or (players > 20 and not loading_favs):
                         time.sleep(0.25)
                         delay_mod_query = True
-                        players, message = a2s_players(ip, queryPort)
+                        players, debug_message = a2s_players(ip, queryPort)
                         serverDict[f'{ip}:{queryPort}']['players'] = players
-                        if message:
-                            print(message)
+                        if debug_message:
+                            appLogger.debug(debug_message)
+                            print(debug_message)
 
                     gamePortPing = get_ping_gameport(ip, gamePort) if ping < 60 else None
                     if gamePortPing:
@@ -3804,7 +3881,7 @@ def query_item_list(itemList, loading_favs=False):
 
     except tk.TclError as te:
         error_message = f'User probably pressed "Download Servers" before Favorites completed: {te}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
 
 
@@ -3962,7 +4039,7 @@ def get_dayz_version(exe, server_version):
             'Try checking for updates in Steam. Also, verify your DayZ install from the "Installed Mods" tab or '
             'from the DayZ properties in your Steam Library. Continue Joining Server anyways?'
         )
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         join_server = app.MessageBoxAskYN(error_message)
         
@@ -3988,10 +4065,10 @@ def detect_install_directories():
             vdfDir = f'{flatpak_steam_dir}/steamapps/'
 
         else:
-            logging.error('Unable to detect Linux Steam install directories')
+            appLogger.error('Unable to detect Linux Steam install directories')
             return
 
-        logging.debug(f'Steam libraryfolders directory set to: {vdfDir}')
+        appLogger.debug(f'Steam libraryfolders directory set to: {vdfDir}')
 
     # Set default directories for Windows
     elif windows_os:
@@ -4007,12 +4084,12 @@ def detect_install_directories():
             default_steam_dir = winreg.QueryValueEx(hklm_steam, "InstallPath")[0]
         except FileNotFoundError as e:
             error_message = f'Steam Reg Install Path not found: {e}'
-            logging.error(error_message)
+            appLogger.error(error_message)
             print(error_message)
             default_steam_dir = r'C:\Program Files (x86)\Steam'
 
         vdfDir = f'{default_steam_dir}\\config\\'
-        logging.debug(f'Steam libraryfolders directory set to: {vdfDir}')
+        appLogger.debug(f'Steam libraryfolders directory set to: {vdfDir}')
 
     else:
         print('Unsupported OS. Skipping Install Check...')
@@ -4031,13 +4108,13 @@ def detect_install_directories():
             if path:
                 settings['dayz_dir'] = os.path.join(path, 'steamapps', 'common', 'DayZ')
                 settings['steam_dir'] = os.path.join(path, 'steamapps', 'workshop')
-                logging.debug(f'Setting DayZ directory as: {settings["dayz_dir"]}')
-                logging.debug(f'Setting Steam directory as: {settings["steam_dir"]}')
+                appLogger.debug(f'Setting DayZ directory as: {settings["dayz_dir"]}')
+                appLogger.debug(f'Setting Steam directory as: {settings["steam_dir"]}')
                 # save_settings_to_json()
 
     else:
         error_message = 'Unable to detect DayZ & Workshop directories'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
 
 
@@ -4067,8 +4144,8 @@ def check_platform():
     elif system_os.lower() == 'windows':
         windows_os = True
     
-    logging.debug(f'Platform: {system_os}')
-    logging.debug(f'Architecture: {architecture}')
+    appLogger.debug(f'Platform: {system_os}')
+    appLogger.debug(f'Architecture: {architecture}')
 
 
 def get_latest_release(url):
@@ -4087,7 +4164,7 @@ def get_latest_release(url):
         return response.text
     except requests.exceptions.RequestException as err:
         error_message = f'Error connecting to GitLab for Updates: {url}\n\n{err}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
         return None
@@ -4105,7 +4182,7 @@ def update_check():
         latest_version = py_raw.split("version = '")[1].split("'\n")[0]
 
         # Check if local version differs from GitLab version.
-        logging.info(f'Installed version: {version} - Latest version: {latest_version}')
+        appLogger.info(f'Installed version: {version} - Latest version: {latest_version}')
         return version != latest_version
 
 
@@ -4126,7 +4203,7 @@ def install_update():
             script_file.write(install_script)
     else:
         error_message = 'Failed to download the script.'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
         return
@@ -4142,11 +4219,11 @@ def install_update():
         elif windows_os:
             subprocess.run(['powershell', '-ExecutionPolicy', 'Unrestricted', '-File', script], check=True)
         info_message = 'Install complete. Restart the Launcher to apply changes.'
-        logging.info(info_message)
+        appLogger.info(info_message)
         app.MessageBoxInfo(message=info_message)
     except subprocess.CalledProcessError as e:
         error_message = f'Failed to run the Upgrade Script.\n\n{e}'
-        logging.error(error_message)
+        appLogger.error(error_message)
         print(error_message)
         app.MessageBoxError(error_message)
 
