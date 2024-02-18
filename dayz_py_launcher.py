@@ -45,7 +45,7 @@ logging.getLogger(a2s.__name__).setLevel(logging.INFO)
 
 
 appName = 'DayZ Py Launcher'
-version = '2.8.0'
+version = '2.9.0'
 dzsa_api_servers = 'https://dayzsalauncher.com/api/v2/launcher/servers/dayz'
 workshop_url = 'steam://url/CommunityFilePage/'
 gameExecutable = 'steam'
